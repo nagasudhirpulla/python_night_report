@@ -3,6 +3,8 @@ import datetime
 import pandas as pd
 import revs_helper
 import wbes_helper
+import scada_files_helper
+import ids_helper
 
 def hello_xlwings():
     wb = xw.Book.caller()
@@ -60,10 +62,18 @@ def flow_gate_dfs(baseURLStr, dateObj):
     return wbes_helper.get_flow_gate_sch_df(baseURLStr, revs_helper.latestRevForDate(baseURLStr, dateObj), dateObj)
 
 @xw.func
-@xw.arg('baseURLStr', doc='Base URL')
-@xw.arg('dateObj', doc='Date String')
-@xw.ret(index=False, header=True, expand='table')
-def get_sch_dfs(baseURLStr, dateObj):
-    rev = revs_helper.latestRevForDate(baseURLStr, dateObj)
-    return pd.concat([wbes_helper.combine_all_state_dfs(baseURLStr, rev, dateObj), wbes_helper.get_isgs_dc_df(baseURLStr, rev, dateObj), wbes_helper.get_isgs_inj_df(baseURLStr, rev, dateObj), wbes_helper.get_flow_gate_sch_df(baseURLStr, rev, dateObj)], axis=1)
+def paste_sch_dfs():
+    wb = xw.Book.caller()
+    wbes_helper.paste_sch_dfs_wb(wb)
+    
+@xw.func
+def paste_scada_dfs():
+    wb = xw.Book.caller()
+    scada_files_helper.paste_scada_df_wb(wb)
+    
 
+    
+# wb = xw.Book(r'C:/Users/Nagasudhir/Documents/Python Projects/Python Excel Reporting/python_report/python_report.xlsm')
+
+# paste_sch_dfs(wb)
+# wb.close()

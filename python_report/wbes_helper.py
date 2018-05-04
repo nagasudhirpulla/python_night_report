@@ -9,8 +9,8 @@ from io import StringIO
 import xlwings as xw
 import requests
 import datetime
-# import json
-# import revs_helper
+import json
+import revs_helper
 import ids_helper
 import pandas as pd
 
@@ -116,6 +116,17 @@ def get_flow_gate_sch_df(baseURLStr, latestRev, dateObj):
     # if we dont get 200 ok response, send empty array
     return pd.DataFrame()
 
+def get_sch_dfs(baseURLStr, dateObj, rev):
+    return pd.concat([combine_all_state_dfs(baseURLStr, rev, dateObj), get_isgs_dc_df(baseURLStr, rev, dateObj), get_isgs_inj_df(baseURLStr, rev, dateObj), get_flow_gate_sch_df(baseURLStr, rev, dateObj)], axis=1)
+
+def paste_sch_dfs_wb(wb):
+    config_df = ids_helper.get_config_df(wb)
+    # wb.sheets['SCH'].range('A1').value = config_df
+    dateObj = config_df.loc['date']['value']
+    baseURLStr = config_df.loc['baseURL']['value']
+    rev = int(config_df.loc['Revision']['value'])
+    sch_dfs = get_sch_dfs(baseURLStr, dateObj, rev)
+    wb.sheets['SCH'].range('A1').value = sch_dfs
 
 # x =  revs_helper.latestRevForDate("http://103.7.130.121", datetime.datetime.now())
 

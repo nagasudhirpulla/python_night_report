@@ -28,13 +28,14 @@ def get_default_request_headers():
     
 def get_config_df(caller_wb):
     # http://docs.xlwings.org/en/stable/datastructures.html
-    arr = wb.sheets['config_params'].range('A1').options(expand='table').value
+    arr = caller_wb.sheets['config_params'].range('A1').options(expand='table').value
     df = pd.DataFrame(data = arr)
     df.columns = df.iloc[0]
     df.drop(df.index[0], inplace=True)
     df.set_index('key', inplace=True)
     return df
 
-#wb = xw.Book(r'C:/Users/Nagasudhir/Documents/Python Projects/Python Excel Reporting/python_report/python_report.xlsm')
-#df = get_config_df(wb)
-#wb.close()
+
+wb = xw.Book(r'C:/Users/Nagasudhir/Documents/Python Projects/Python Excel Reporting/python_report/python_report.xlsm')
+df = get_config_df(wb)
+# wb.close()
