@@ -1,0 +1,5 @@
+# exclude everything
+#scada_files/*
+
+# exception to the rule
+#!scada_files/.gitkeep
