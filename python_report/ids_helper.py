@@ -36,6 +36,6 @@ def get_config_df(caller_wb):
     return df
 
 
-wb = xw.Book(r'C:/Users/Nagasudhir/Documents/Python Projects/Python Excel Reporting/python_report/python_report.xlsm')
-df = get_config_df(wb)
+# wb = xw.Book(r'C:/Users/Nagasudhir/Documents/Python Projects/Python Excel Reporting/python_report/python_report.xlsm')
+# df = get_config_df(wb)
 # wb.close()
