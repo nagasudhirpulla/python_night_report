@@ -4,6 +4,9 @@ Created on Thu May 03 19:24:03 2018
 
 @author: Nagasudhir
 """
+import xlwings as xw
+import numpy as np
+import pandas as pd
 
 def get_state_ids():
     idsObj = {}
@@ -22,3 +25,16 @@ def get_default_request_headers():
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36',
         'Accept-Encoding': 'gzip, deflate'
     }
+    
+def get_config_df(caller_wb):
+    # http://docs.xlwings.org/en/stable/datastructures.html
+    arr = wb.sheets['config_params'].range('A1').options(expand='table').value
+    df = pd.DataFrame(data = arr)
+    df.columns = df.iloc[0]
+    df.drop(df.index[0], inplace=True)
+    df.set_index('key', inplace=True)
+    return df
+
+#wb = xw.Book(r'C:/Users/Nagasudhir/Documents/Python Projects/Python Excel Reporting/python_report/python_report.xlsm')
+#df = get_config_df(wb)
+#wb.close()
