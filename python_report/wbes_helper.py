@@ -15,6 +15,48 @@ import ids_helper
 import pandas as pd
 import itertools
 
+def get_path_ids_obj():
+    # east-west = 39; north-west = 14; west-north = 1; west-south = 4; south-west = 27; west-east = 67
+    return {
+            'west_east': '67',
+            'west_north': '1',
+            'west_south': '4',
+            'east_west': '39',
+            'north_west': '14',
+            'south_west': '27'
+            }
+
+def get_path_sch_url(baseURLStr, dateObj, revStr, pathStr):
+    pathId = get_path_ids_obj()[pathStr]
+    pathUrl = '{0}/wbes/Report/ExportFlowGateScheduleToPDF?scheduleDate={1:%d-%m-%Y}&getTokenValue=1525510061921&fileType=csv&revisionNumber={2}&pathId={3}&scheduleType=0&isLink=1'.format(baseURLStr, dateObj, revStr, pathId)
+    return pathUrl
+
+def get_path_sch_df(baseURLStr, dateObj, revStr, pathStr):
+    pathUrl = get_path_sch_url(baseURLStr, dateObj, revStr, pathStr)
+    # fetch state net sch
+    r = requests.get(pathUrl, headers=ids_helper.get_default_request_headers())
+    # check if we get a 200 ok response
+    if r.status_code == requests.codes.ok:
+        resText = r.text
+        df = convert_csv_TextToDF(resText)
+        # Make the first  row as header
+        df = df.rename(columns=df.iloc[0])
+        df.drop(['\r'], axis = 1, inplace = True)
+        return df
+    # if we dont get 200 ok response, send empty array
+    return pd.DataFrame()
+
+def get_all_path_sch_dfs(baseURLStr, dateObj, revStr):
+    agg_df = pd.DataFrame()
+    for pathStr in get_path_ids_obj():
+        df = get_path_sch_df(baseURLStr, dateObj, revStr, pathStr)
+        # add _pathname to  each column
+        df.columns=[col+'_'+pathStr for col in df.columns]
+        k = pd.DataFrame(columns=df.columns, data=[[pathStr for varr in df.columns]])
+        df = k.append(df, ignore_index=True)
+        agg_df = pd.concat([agg_df, df], axis=1)
+    return agg_df
+
 def convert_csv_TextToDF(csvReadText):
     csvArray = [[val for val in lineStr.split(',')] for lineStr in csvReadText.decode("utf-16").split('\n')]
     df = pd.DataFrame(data=csvArray)
@@ -23,7 +65,7 @@ def convert_csv_TextToDF(csvReadText):
 def get_state_csv_url(stateStr, baseURLStr, latestRev, dateObj):
     idsObj = ids_helper.get_state_ids()
     idStr = idsObj[str(stateStr)]
-    fetchURL = '{0}/wbes/ReportNetSchedule/ExportNetScheduleSummaryToPDF?scheduleDate={1:%d-%m-%Y}&sellerId={2}&revisionNumber={3}&getTokenValue=1525350664894&fileType=csv&regionId=2&byDetails=1&isBuyer=1&isBuyer=1'.format(baseURLStr, dateObj, idStr, str(latestRev))
+    fetchURL = '{0}/wbes/ReportNetSchedule/ExportNetScheduleSummaryToPDF?scheduleDate={1:%d-%m-%Y}&sellerId={2}&revisionNumber={3}&getTokenValue=1525510061921&fileType=csv&regionId=2&byDetails=1&isBuyer=1&isBuyer=1'.format(baseURLStr, dateObj, idStr, str(int(latestRev)))
     return fetchURL
 
 def get_state_net_sch_df(stateStr, baseURLStr, latestRev, dateObj):
@@ -44,7 +86,7 @@ def get_state_net_sch_df(stateStr, baseURLStr, latestRev, dateObj):
 def get_state_csv_urls(baseURLStr, latestRev, dateObj):
     urlsObj = {}
     for stateStr in ids_helper.get_state_ids():
-        fetchURL = get_state_csv_url(stateStr, baseURLStr, dateObj)
+        fetchURL = get_state_csv_url(stateStr, baseURLStr, latestRev, dateObj)
         urlsObj[stateStr] = fetchURL
     return urlsObj
 
@@ -60,7 +102,7 @@ def combine_all_state_dfs(baseURLStr, latestRev, dateObj):
     return agg_df
 
 def get_isgs_inj_df(baseURLStr, latestRev, dateObj):
-    fetchURL = '{0}/wbes/ReportFullSchedule/ExportFullScheduleInjSummaryToPDF?scheduleDate={1:%d-%m-%Y}&sellerId=ALL&revisionNumber={2}&getTokenValue=1525350664895&fileType=csv&regionId=2&byDetails=0&isDrawer=0&isBuyer=0'.format(baseURLStr, dateObj, latestRev)
+    fetchURL = '{0}/wbes/ReportFullSchedule/ExportFullScheduleInjSummaryToPDF?scheduleDate={1:%d-%m-%Y}&sellerId=ALL&revisionNumber={2}&getTokenValue=1525510061921&fileType=csv&regionId=2&byDetails=0&isDrawer=0&isBuyer=0'.format(baseURLStr, dateObj, latestRev)
     # fetch state net sch
     r = requests.get(fetchURL, headers=ids_helper.get_default_request_headers())
     # check if we get a 200 ok response
@@ -79,7 +121,7 @@ def get_isgs_inj_df(baseURLStr, latestRev, dateObj):
     return pd.DataFrame()
 
 def get_isgs_dc_df(baseURLStr, latestRev, dateObj):
-    fetchURL = '{0}/wbes/Report/ExportDeclarationRldcToPDF?scheduleDate={1:%d-%m-%Y}&getTokenValue=1525350664895&fileType=csv&Region=2&UtilId=ALL&Revision={2}&isBuyer=0&byOnBar=0'.format(baseURLStr, dateObj, latestRev)
+    fetchURL = '{0}/wbes/Report/ExportDeclarationRldcToPDF?scheduleDate={1:%d-%m-%Y}&getTokenValue=1525510061921&fileType=csv&Region=2&UtilId=ALL&Revision={2}&isBuyer=0&byOnBar=0'.format(baseURLStr, dateObj, latestRev)
     # fetch state net sch
     r = requests.get(fetchURL, headers=ids_helper.get_default_request_headers())
     # check if we get a 200 ok response
@@ -100,7 +142,7 @@ def get_isgs_dc_df(baseURLStr, latestRev, dateObj):
     return pd.DataFrame()
 
 def get_flow_gate_sch_df(baseURLStr, latestRev, dateObj):
-    fetchURL = '{0}/wbes/Report/ExportFlowGateScheduleToPDF?scheduleDate={1:%d-%m-%Y}&getTokenValue=1525350664895&fileType=csv&revisionNumber={2}&pathId=0&scheduleType=-1&isLink=1'.format(baseURLStr, dateObj, latestRev)
+    fetchURL = '{0}/wbes/Report/ExportFlowGateScheduleToPDF?scheduleDate={1:%d-%m-%Y}&getTokenValue=1525510061921&fileType=csv&revisionNumber={2}&pathId=0&scheduleType=-1&isLink=1'.format(baseURLStr, dateObj, latestRev)
     # fetch state net sch
     r = requests.get(fetchURL, headers=ids_helper.get_default_request_headers())
     # check if we get a 200 ok response
@@ -118,7 +160,8 @@ def get_flow_gate_sch_df(baseURLStr, latestRev, dateObj):
     return pd.DataFrame()
 
 def get_sch_dfs(baseURLStr, dateObj, rev):
-    return pd.concat([combine_all_state_dfs(baseURLStr, rev, dateObj), get_isgs_dc_df(baseURLStr, rev, dateObj), get_isgs_inj_df(baseURLStr, rev, dateObj), get_flow_gate_sch_df(baseURLStr, rev, dateObj)], axis=1)
+    # return pd.concat([combine_all_state_dfs(baseURLStr, rev, dateObj), get_isgs_dc_df(baseURLStr, rev, dateObj), get_isgs_inj_df(baseURLStr, rev, dateObj), get_flow_gate_sch_df(baseURLStr, rev, dateObj)], axis=1)
+    return pd.concat([combine_all_state_dfs(baseURLStr, rev, dateObj), get_isgs_dc_df(baseURLStr, rev, dateObj), get_isgs_inj_df(baseURLStr, rev, dateObj), get_all_path_sch_dfs(baseURLStr, dateObj, rev)], axis=1)
 
 def paste_sch_dfs_wb(wb):
     config_df = ids_helper.get_config_df(wb)
@@ -158,6 +201,14 @@ def sch_blk_vals_mul_col(wb, nameStrs):
     blkVals = [sum(x) for x in itertools.izip(*blkValsArr)]
     return blkVals
 
+def get_sch_avg_mul_col(wb, nameStrs):
+    blkVals = sch_blk_vals_mul_col(wb, nameStrs)
+    return sum(blkVals)/len(blkVals)
+
+def get_sch_mu_mul_col(wb, nameStrs):
+    return get_sch_avg_mul_col(wb, nameStrs)*0.024
+
+# east west link schedule - http://103.7.130.121/wbes/Report/ExportFlowGateScheduleToPDF?scheduleDate=04-05-2018&getTokenValue=1525510061921&fileType=csv&revisionNumber=72&pathId=39&scheduleType=0&isLink=1
 
 # x =  revs_helper.latestRevForDate("http://103.7.130.121", datetime.datetime.now())
 
