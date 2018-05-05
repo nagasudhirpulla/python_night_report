@@ -3,3 +3,9 @@
 
 # exception to the rule
 #!scada_files/.gitkeep
+
+# exclude everything
+#state_files/*
+
+# exception to the rule
+#!state_files/.gitkeep
