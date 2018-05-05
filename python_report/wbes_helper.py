@@ -13,6 +13,7 @@ import json
 import revs_helper
 import ids_helper
 import pandas as pd
+import itertools
 
 def convert_csv_TextToDF(csvReadText):
     csvArray = [[val for val in lineStr.split(',')] for lineStr in csvReadText.decode("utf-16").split('\n')]
@@ -127,6 +128,36 @@ def paste_sch_dfs_wb(wb):
     rev = int(config_df.loc['Revision']['value'])
     sch_dfs = get_sch_dfs(baseURLStr, dateObj, rev)
     wb.sheets['SCH'].range('A1').value = sch_dfs
+    
+def get_sch_blk_vals(wb, nameStr):
+    blkVals = []
+    config_df = ids_helper.get_config_df(wb)
+    # wb.sheets['SCH'].range('A1').value = config_df
+    headersArr= wb.sheets['SCH'].range('A1').options(expand='right').value    
+    if(nameStr in headersArr):
+        nameIndex = headersArr.index(nameStr)
+        firstBlkRow = int(config_df.loc['sch_first_blk_row']['value'])
+        startRowIndex = firstBlkRow - 1
+        endRowIndex = 95 + firstBlkRow - 1
+        blkVals = wb.sheets['SCH'].range((startRowIndex+1,nameIndex+1), (endRowIndex+1,nameIndex+1)).value
+    return blkVals
+    
+def get_sch_avg(wb, nameStr):
+    blkVals = get_sch_blk_vals(wb, nameStr)
+    return sum(blkVals)/len(blkVals)
+
+def get_sch_mu(wb, nameStr):
+    return get_sch_avg(wb, nameStr)*0.024
+
+def sch_blk_vals_mul_col(wb, nameStrs):
+    blkValsArr = []
+    for col in nameStrs:
+        blkValsArr.append(get_sch_blk_vals(wb, col))
+    # https://stackoverflow.com/questions/18713321/element-wise-addition-of-2-lists
+    # [sum(x) for x in itertools.izip(*[[1,2,3], [4,5,6], [7,8,9]])] = [12, 15, 18]
+    blkVals = [sum(x) for x in itertools.izip(*blkValsArr)]
+    return blkVals
+
 
 # x =  revs_helper.latestRevForDate("http://103.7.130.121", datetime.datetime.now())
 

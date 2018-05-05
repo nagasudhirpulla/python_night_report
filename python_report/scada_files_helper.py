@@ -42,13 +42,51 @@ def get_blk_val(wb, nameStr, blk):
     if(nameStr in headersArr):
         nameIndex = headersArr.index(nameStr)
         firstMinRow = int(config_df.loc['scada_first_min_row']['value'])
-        startMin = (blk - 1) * 15 + 1
+        startMin = (blk - 1) * 15
         endMin = startMin + 14
-        startRowIndex = startMin - 1 + firstMinRow - 1
-        endRowIndex = endMin - 1 + firstMinRow - 1
-        minVals = [wb.sheets['SCADA'].cells(rowIndex+1,nameIndex+1).value for rowIndex in range(startRowIndex, endRowIndex+1)]
+        startRowIndex = startMin + firstMinRow - 1
+        endRowIndex = endMin + firstMinRow - 1
+        minVals = wb.sheets['SCADA'].range((startRowIndex+1, nameIndex+1), (endRowIndex+1,nameIndex+1)).value
         blkVal = sum(minVals) / len(minVals)
     return blkVal
+
+def get_all_blk_vals(wb, nameStr):
+    config_df = ids_helper.get_config_df(wb)
+    # wb.sheets['SCH'].range('A1').value = config_df
+    headersArr= wb.sheets['SCADA'].range('A1').options(expand='right').value    
+    blkVals = []
+    if(nameStr in headersArr):
+        nameIndex = headersArr.index(nameStr)
+        firstMinRow = int(config_df.loc['scada_first_min_row']['value'])
+        startMin = 0
+        endMin = 1439
+        startRowIndex = startMin + firstMinRow - 1
+        endRowIndex = endMin + firstMinRow - 1
+        minVals = wb.sheets['SCADA'].range((startRowIndex+1, nameIndex+1), (endRowIndex+1,nameIndex+1)).value
+        for blk in range(1,97):
+            blkMinVals = minVals[ ((blk - 1) * 15) : (blk * 15) ]
+            blkVals.append(sum(blkMinVals)/len(blkMinVals))
+    return blkVals
+
+def get_max_blk_val(wb, nameStr):
+    blkVals = get_all_blk_vals(wb, nameStr)
+    maxBlkVal = max(blkVals)
+    return maxBlkVal
+
+def get_max_blk_val_blk(wb, nameStr):
+    blkVals = get_all_blk_vals(wb, nameStr)
+    maxBlkValBlk = blkVals.index(max(blkVals)) + 1
+    return maxBlkValBlk
+
+def get_min_blk_val(wb, nameStr):
+    blkVals = get_all_blk_vals(wb, nameStr)
+    minBlkVal = min(blkVals)
+    return minBlkVal
+
+def get_min_blk_val_blk(wb, nameStr):
+    blkVals = get_all_blk_vals(wb, nameStr)
+    minBlkValBlk = blkVals.index(min(blkVals)) + 1
+    return minBlkValBlk
 
 def get_minute_val(wb, nameStr, minReq):
     config_df = ids_helper.get_config_df(wb)
@@ -71,14 +109,47 @@ def get_all_minute_vals(wb, nameStr):
         nameIndex = headersArr.index(nameStr)
         firstMinRow = int(config_df.loc['scada_first_min_row']['value'])
         startRowIndex = firstMinRow - 1
-        endRowIndex = 1440 - 1 + firstMinRow - 1
-        minVals = [wb.sheets['SCADA'].cells(rowIndex+1,nameIndex+1).value for rowIndex in range(startRowIndex, endRowIndex+1)]
+        endRowIndex = 1439 + firstMinRow - 1
+        minVals = wb.sheets['SCADA'].range((startRowIndex+1,nameIndex+1), (endRowIndex+1,nameIndex+1)).value
     return minVals
     
+def get_max_minute_val(wb, nameStr):
+    minuteVals = get_all_minute_vals(wb, nameStr)
+    maxVal = max(minuteVals)
+    return maxVal
+
+def get_max_minute_val_minute(wb, nameStr):
+    minuteVals = get_all_minute_vals(wb, nameStr)
+    maxValMinute = minuteVals.index(max(minuteVals))
+    return maxValMinute
+
+def get_min_minute_val(wb, nameStr):
+    minuteVals = get_all_minute_vals(wb, nameStr)
+    minVal = min(minuteVals)
+    return minVal
+
+def get_min_minute_val_minute(wb, nameStr):
+    minuteVals = get_all_minute_vals(wb, nameStr)
+    minValMinute = minuteVals.index(min(minuteVals))
+    return minValMinute
+
+def get_mu_val(wb, nameStr):
+    return get_avg_val(wb, nameStr)*.024
+
+def get_avg_val(wb, nameStr):
+    minuteVals = get_all_minute_vals(wb, nameStr)
+    avgVal = sum(minuteVals)/len(minuteVals)
+    return avgVal
+
 def convert_min_to_time_str(minReq):
     hrs = math.floor(minReq/60)
     mins = minReq - hrs*60
     return '{0}:{1}'.format(str(int(hrs)).zfill(2), str(int(mins)).zfill(2))
+
+def convert_blk_to_time_strs(blk):
+    startMins = (blk-1)*15
+    endMins = blk*15
+    return [convert_min_to_time_str(startMins), convert_min_to_time_str(endMins)]
 
 
 # wb = xw.Book(r'C:/Users/Nagasudhir/Documents/Python Projects/Python Excel Reporting/python_report/python_report.xlsm')
