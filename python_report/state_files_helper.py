@@ -17,7 +17,7 @@ def get_state_file_info_df():
                   ['CSEB', 'DD', 'DNH', 'ESIL', 'GEB', 'GOA', 'MP', 'MSEB', 'IRE']])
 
 def get_state_df(filename, fileType):
-    df = pd.read_excel(filename, header=None, index_col=None, dtype=str)
+    df = pd.read_excel(filename, header=None, index_col=None)
     return df
 
 def paste_state_data_files(wb):

@@ -71,8 +71,17 @@ def paste_scada_dfs():
     wb = xw.Book.caller()
     scada_files_helper.paste_scada_df_wb(wb)
     
+@xw.func
+def get_max_index(rng):
+   # x is a DataFrame, do something with it
+   return rng.index(max(rng))
 
+@xw.func
+def get_min_index(rng):
+   # x is a DataFrame, do something with it
+   return rng.index(min(rng))
     
+   
 # wb = xw.Book(r'C:/Users/Nagasudhir/Documents/Python Projects/Python Excel Reporting/python_report/python_report.xlsm')
 
 # paste_sch_dfs(wb)
