@@ -4,7 +4,10 @@ import pandas as pd
 import revs_helper
 import wbes_helper
 import scada_files_helper
+import state_files_helper
 import ids_helper
+import re
+from itertools import izip
 
 def hello_xlwings():
     wb = xw.Book.caller()
@@ -72,15 +75,52 @@ def paste_scada_dfs():
     scada_files_helper.paste_scada_df_wb(wb)
     
 @xw.func
-def get_max_index(rng):
-   # x is a DataFrame, do something with it
-   return rng.index(max(rng))
+def paste_state_files():
+    wb = xw.Book.caller()
+    state_files_helper.paste_state_data_files(wb)
 
 @xw.func
-def get_min_index(rng):
+def get_max_pos(rng):
+   return rng.index(max(rng)) + 1
+
+@xw.func
+def get_max_pos_2_col(rng1, rng2):
+   rng = [a + b for a, b in izip(rng1, rng2)]
+   return rng.index(max(rng)) + 1
+
+@xw.func
+def get_max_pos_3_col(rng1, rng2, rng3):
+   rng = [a + b + c for a, b, c in izip(rng1, rng2, rng3)]
+   return rng.index(max(rng)) + 1
+
+@xw.func
+def get_val_at_pos(rng, pos):
    # x is a DataFrame, do something with it
-   return rng.index(min(rng))
+   return rng[int(pos)-1]
+
+@xw.func
+def get_min_pos(rng):
+   # x is a DataFrame, do something with it
+   return rng.index(min(rng)) + 1
+
+@xw.func
+def get_peak_val(rng):
+   # x is a DataFrame, do something with it
+   wb = xw.Book.caller()
+   config_df = ids_helper.get_config_df(wb)
+   peakHr = int(config_df.loc['peak_hrs']['value'])
+   return rng[peakHr-1]
     
+@xw.func
+def extract_num(strng):
+   # x is a DataFrame, do something with it
+   s = re.search(r"\d+(\.\d+)?", strng)
+   return int(s.group(0))
+
+@xw.func
+def get_sch_mu(stateStr):
+    wb = xw.Book.caller()
+    return wbes_helper.get_sch_mu(wb, stateStr)
    
 # wb = xw.Book(r'C:/Users/Nagasudhir/Documents/Python Projects/Python Excel Reporting/python_report/python_report.xlsm')
 
