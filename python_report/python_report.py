@@ -198,6 +198,16 @@ def get_scada_avg(nameStr):
     return scada_files_helper.get_avg_val(wb, nameStr)
 
 @xw.func
+def get_scada_max_import(nameStrs):
+    wb = xw.Book.caller()
+    return scada_files_helper.get_max_import(wb, nameStrs)
+
+@xw.func
+def get_scada_max_export(nameStrs):
+    wb = xw.Book.caller()
+    return scada_files_helper.get_max_export(wb, nameStrs)
+
+@xw.func
 def get_scada_val_less_than_prec(nameStr, val):
     wb = xw.Book.caller()
     return scada_files_helper.get_scada_val_less_than_prec(wb, nameStr, val)
@@ -207,6 +217,34 @@ def get_scada_val_greater_than_prec(nameStr, val):
     wb = xw.Book.caller()
     return scada_files_helper.get_scada_val_greater_than_prec(wb, nameStr, val)
    
+@xw.func
+def get_ire_mw_at(scadaStrs,minute):
+    wb = xw.Book.caller()
+    return scada_files_helper.get_ire_mw_at(wb, scadaStrs,int(minute))
+
+@xw.func
+def get_ire_import_mu(ireStrs, scadaStrs):
+    wb = xw.Book.caller()
+    if not (ireStrs == None or ireStrs == ''):
+        ireMU = state_files_helper.get_ire_import_mu(wb, ireStrs)
+        if ireMU != None:
+            return ireMU
+    if not (scadaStrs == None or scadaStrs == ''):
+        return scada_files_helper.get_import_mu_val(wb, scadaStrs)
+    return None
+
+@xw.func
+def get_ire_export_mu(ireStrs, scadaStrs):
+    wb = xw.Book.caller()
+    if not (ireStrs == None or ireStrs == ''):
+        ireMU = state_files_helper.get_ire_export_mu(wb, ireStrs)
+        if ireMU != None:
+            return ireMU
+    if not (scadaStrs == None or scadaStrs == ''):
+        return scada_files_helper.get_export_mu_val(wb, scadaStrs)
+    return None
+
+
 # wb = xw.Book(r'C:/Users/Nagasudhir/Documents/Python Projects/Python Excel Reporting/python_report/python_report.xlsm')
 
 # paste_sch_dfs(wb)

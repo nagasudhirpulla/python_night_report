@@ -9,6 +9,7 @@ import ids_helper
 import xlwings as xw
 import os
 import math
+import itertools
 
 def get_file_info_df():
     return pd.DataFrame(columns=['volt', 'gen_raw', 'state_raw', 'state_gen', 'inter_regional'], index=['config_key', 'type'], data=[['volt_filename', 'gen_raw_filename', 'state_raw_filename', 'state_gen_filename', 'inter_regional_filename'], ['volt', 'gen_raw', 'state_raw', 'state_gen', 'inter_regional']])
@@ -140,6 +141,18 @@ def get_avg_val(wb, nameStr):
     avgVal = sum(minuteVals)/len(minuteVals)
     return avgVal
 
+def get_export_mu_val(wb, nameStrs):
+    minuteVals = get_scada_minute_vals_mul_col(wb, nameStrs.split('|'))
+    exportVals = [(0 if x > 0 else x) for x in minuteVals]
+    exportMU = sum(exportVals)*0.024/len(exportVals)
+    return exportMU
+
+def get_import_mu_val(wb, nameStrs):
+    minuteVals = get_scada_minute_vals_mul_col(wb, nameStrs.split('|'))
+    importVals = [(0 if x < 0 else x) for x in minuteVals]
+    importMU = sum(importVals)*0.024/len(importVals)
+    return importMU
+
 def get_scada_val_less_than_prec(wb, nameStr, val):
     minuteVals = get_all_minute_vals(wb, nameStr)
     percVal = sum([1 if x < val else 0 for x in minuteVals])*100.0/len(minuteVals)
@@ -165,6 +178,26 @@ def convert_blk_to_time_strs(blk):
     endMins = blk*15
     return [convert_min_to_time_str(startMins), convert_min_to_time_str(endMins)]
 
+def get_scada_minute_vals_mul_col(wb, nameStrs):
+    minuteValsArr = []
+    for col in nameStrs:
+        minuteValsArr.append(get_all_minute_vals(wb, col))
+    minuteVals = [sum(x) for x in itertools.izip(*minuteValsArr)]
+    return minuteVals
+    
+def get_ire_mw_at(wb, scadaStrs, minute):
+    scadaMinuteVals = get_scada_minute_vals_mul_col(wb, scadaStrs.split('|'))
+    return scadaMinuteVals[minute]
+
+def get_max_import(wb, scadaStrs):
+    scadaMinuteVals = get_scada_minute_vals_mul_col(wb, scadaStrs.split('|'))
+    importVals = [(0 if x<0 else x) for x in scadaMinuteVals]
+    return max(importVals)
+
+def get_max_export(wb, scadaStrs):
+    scadaMinuteVals = get_scada_minute_vals_mul_col(wb, scadaStrs.split('|'))
+    importVals = [(0 if x>0 else x) for x in scadaMinuteVals]
+    return min(importVals)
 
 # wb = xw.Book(r'C:/Users/Nagasudhir/Documents/Python Projects/Python Excel Reporting/python_report/python_report.xlsm')
 # paste_scada_df_wb(wb)

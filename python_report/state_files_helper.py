@@ -34,6 +34,29 @@ def paste_state_data_files(wb):
         vals = wbSrc.sheets[0].range((1,1), (endRowIndex+1,endColIndex+1)).value
         wb.sheets[sheet_name].range('A1').value = vals
 
+def get_ire_val(wb, ireStrs, headingIndex):
+    config_df = ids_helper.get_config_df(wb)
+    headingCell = config_df.loc['ire_heading_cell']['value']
+    ireValsArr = wb.sheets['IRE'].range(headingCell).options(expand='table').value
+    ireColsList = wb.sheets['IRE'].range(headingCell).options(expand='down').value
+    impMUVal = None
+    for ireStr in ireStrs.split('|'):
+        if ireStr in ireColsList:
+            colIndex = ireColsList.index(ireStr)
+            muVal = ireValsArr[colIndex][headingIndex]
+            if muVal == None:
+                continue
+            muVal = float(muVal)
+            impMUVal = (0 if impMUVal == None else impMUVal) + muVal
+    return impMUVal
 
+def get_ire_import_mu(wb, ireStrs):
+    headingIndex = 3
+    return get_ire_val(wb, ireStrs, headingIndex)
+
+def get_ire_export_mu(wb, ireStrs):
+    headingIndex = 4
+    return get_ire_val(wb, ireStrs, headingIndex)        
+        
 # wb = xw.Book(r'C:/Users/Nagasudhir/Documents/Python Projects/Python Excel Reporting/python_report/python_report.xlsm')
 # paste_state_data_files(wb)
