@@ -140,6 +140,21 @@ def get_avg_val(wb, nameStr):
     avgVal = sum(minuteVals)/len(minuteVals)
     return avgVal
 
+def get_scada_val_less_than_prec(wb, nameStr, val):
+    minuteVals = get_all_minute_vals(wb, nameStr)
+    percVal = sum([1 if x < val else 0 for x in minuteVals])*100.0/len(minuteVals)
+    return percVal
+
+def get_scada_val_greater_than_prec(wb, nameStr, val):
+    minuteVals = get_all_minute_vals(wb, nameStr)
+    percVal = sum([1 if x > val else 0 for x in minuteVals])*100.0/len(minuteVals)
+    return percVal
+
+def get_scada_val_between_prec(wb, nameStr, valLow, valHigh):
+    minuteVals = get_all_minute_vals(wb, nameStr)
+    percVal = sum([1 if (x >= valLow and x <= valHigh) else 0 for x in minuteVals])*100.0/len(minuteVals)
+    return percVal
+
 def convert_min_to_time_str(minReq):
     hrs = math.floor(minReq/60)
     mins = minReq - hrs*60

@@ -171,9 +171,41 @@ def get_scada_mu(nameStr):
     return scada_files_helper.get_mu_val(wb, nameStr)
 
 @xw.func
+def get_scada_max_val(nameStr):
+    wb = xw.Book.caller()
+    return scada_files_helper.get_max_minute_val(wb, nameStr)
+
+@xw.func
+def get_scada_max_val_time(nameStr):
+    wb = xw.Book.caller()
+    minute = scada_files_helper.get_max_minute_val_minute(wb, nameStr)
+    return scada_files_helper.convert_min_to_time_str(minute)
+
+@xw.func
+def get_scada_min_val(nameStr):
+    wb = xw.Book.caller()
+    return scada_files_helper.get_min_minute_val(wb, nameStr)
+
+@xw.func
+def get_scada_min_val_time(nameStr):
+    wb = xw.Book.caller()
+    minute = scada_files_helper.get_min_minute_val_minute(wb, nameStr)
+    return scada_files_helper.convert_min_to_time_str(minute)
+
+@xw.func
 def get_scada_avg(nameStr):
     wb = xw.Book.caller()
     return scada_files_helper.get_avg_val(wb, nameStr)
+
+@xw.func
+def get_scada_val_less_than_prec(nameStr, val):
+    wb = xw.Book.caller()
+    return scada_files_helper.get_scada_val_less_than_prec(wb, nameStr, val)
+   
+@xw.func
+def get_scada_val_greater_than_prec(nameStr, val):
+    wb = xw.Book.caller()
+    return scada_files_helper.get_scada_val_greater_than_prec(wb, nameStr, val)
    
 # wb = xw.Book(r'C:/Users/Nagasudhir/Documents/Python Projects/Python Excel Reporting/python_report/python_report.xlsm')
 
