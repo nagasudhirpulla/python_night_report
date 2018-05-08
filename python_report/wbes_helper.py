@@ -185,6 +185,26 @@ def get_sch_blk_vals(wb, nameStr):
         blkVals = wb.sheets['SCH'].range((startRowIndex+1,nameIndex+1), (endRowIndex+1,nameIndex+1)).value
     return blkVals
     
+def get_sch_blk_val(wb, blk, nameStr):
+    blkVal = -1
+    config_df = ids_helper.get_config_df(wb)
+    # wb.sheets['SCH'].range('A1').value = config_df
+    headersArr= wb.sheets['SCH'].range('A1').options(expand='right').value    
+    if(nameStr in headersArr):
+        nameIndex = headersArr.index(nameStr)
+        firstBlkRow = int(config_df.loc['sch_first_blk_row']['value'])
+        startRowIndex = firstBlkRow - 1 + blk - 1
+        blkVal = wb.sheets['SCH'].cells(startRowIndex+1,nameIndex+1).value
+    return blkVal
+    
+def get_sch_min(wb, nameStr):
+    blkVals = get_sch_blk_vals(wb, nameStr)
+    return min(blkVals)
+
+def get_sch_max(wb, nameStr):
+    blkVals = get_sch_blk_vals(wb, nameStr)
+    return max(blkVals)
+
 def get_sch_avg(wb, nameStr):
     blkVals = get_sch_blk_vals(wb, nameStr)
     return sum(blkVals)/len(blkVals)
@@ -200,6 +220,14 @@ def sch_blk_vals_mul_col(wb, nameStrs):
     # [sum(x) for x in itertools.izip(*[[1,2,3], [4,5,6], [7,8,9]])] = [12, 15, 18]
     blkVals = [sum(x) for x in itertools.izip(*blkValsArr)]
     return blkVals
+
+def get_sch_max_mul_col(wb, nameStrs):
+    blkVals = sch_blk_vals_mul_col(wb, nameStrs)
+    return max(blkVals)
+
+def get_sch_min_mul_col(wb, nameStrs):
+    blkVals = sch_blk_vals_mul_col(wb, nameStrs)
+    return min(blkVals)
 
 def get_sch_avg_mul_col(wb, nameStrs):
     blkVals = sch_blk_vals_mul_col(wb, nameStrs)

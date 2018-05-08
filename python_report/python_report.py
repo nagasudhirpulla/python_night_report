@@ -121,6 +121,59 @@ def extract_num(strng):
 def get_sch_mu(stateStr):
     wb = xw.Book.caller()
     return wbes_helper.get_sch_mu(wb, stateStr)
+
+@xw.func
+def get_sch_blk_val(stateStr, blk):
+    wb = xw.Book.caller()
+    return wbes_helper.get_sch_blk_val(wb, int(blk), stateStr)
+
+@xw.func
+def get_sch_max_3_col(nameStr1, nameStr2, nameStr3):
+    wb = xw.Book.caller()
+    nameStrs = [nameStr1, nameStr2, nameStr3]
+    return wbes_helper.get_sch_max_mul_col(wb, nameStrs)
+
+@xw.func
+def get_sch_min_3_col(nameStr1, nameStr2, nameStr3):
+    wb = xw.Book.caller()
+    nameStrs = [nameStr1, nameStr2, nameStr3]
+    return wbes_helper.get_sch_min_mul_col(wb, nameStrs)
+
+@xw.func
+def get_sch_min(nameStr):
+    wb = xw.Book.caller()
+    return wbes_helper.get_sch_min(wb, nameStr)
+
+@xw.func
+def get_sch_max(nameStr):
+    wb = xw.Book.caller()
+    return wbes_helper.get_sch_max(wb, nameStr)
+
+@xw.func
+def get_scada_blk_val(nameStr, blk):
+    wb = xw.Book.caller()
+    return scada_files_helper.get_blk_val(wb, nameStr, int(blk))
+   
+@xw.func
+def get_scada_max_blk_val(nameStr):
+    wb = xw.Book.caller()
+    return scada_files_helper.get_max_blk_val(wb, nameStr)
+
+@xw.func
+def get_scada_max_blk_val_time(nameStr):
+    wb = xw.Book.caller()
+    blk = scada_files_helper.get_max_blk_val_blk(wb, nameStr)
+    return "-".join(scada_files_helper.convert_blk_to_time_strs(blk))
+   
+@xw.func
+def get_scada_mu(nameStr):
+    wb = xw.Book.caller()
+    return scada_files_helper.get_mu_val(wb, nameStr)
+
+@xw.func
+def get_scada_avg(nameStr):
+    wb = xw.Book.caller()
+    return scada_files_helper.get_avg_val(wb, nameStr)
    
 # wb = xw.Book(r'C:/Users/Nagasudhir/Documents/Python Projects/Python Excel Reporting/python_report/python_report.xlsm')
 

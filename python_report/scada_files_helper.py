@@ -102,7 +102,6 @@ def get_minute_val(wb, nameStr, minReq):
 
 def get_all_minute_vals(wb, nameStr):
     config_df = ids_helper.get_config_df(wb)
-    # wb.sheets['SCH'].range('A1').value = config_df
     headersArr= wb.sheets['SCADA'].range('A1').options(expand='right').value    
     minVals = []
     if(nameStr in headersArr):
