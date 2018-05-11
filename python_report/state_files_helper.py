@@ -56,7 +56,26 @@ def get_ire_import_mu(wb, ireStrs):
 
 def get_ire_export_mu(wb, ireStrs):
     headingIndex = 4
-    return get_ire_val(wb, ireStrs, headingIndex)        
+    return get_ire_val(wb, ireStrs, headingIndex)    
+
+def get_table_val(wb, sheetName, tableCornerAddr, rowStr, headStr):
+        valsArr = wb.sheets[sheetName].range(tableCornerAddr).options(expand='table').value
+        leftColList = wb.sheets[sheetName].range(tableCornerAddr).options(expand='down').value
+        isColFound = False
+        isRowFound = False
+        
+        if headStr in valsArr[0]:
+            headingIndex = valsArr[0].index(headStr)
+            isColFound = True
+            
+        if rowStr in leftColList:
+            rowIndex = leftColList.index(rowStr)
+            isRowFound = True
+        
+        if isColFound == True and isRowFound == True:
+            return valsArr[rowIndex][headingIndex]
+        else:
+            return None
         
 # wb = xw.Book(r'C:/Users/Nagasudhir/Documents/Python Projects/Python Excel Reporting/python_report/python_report.xlsm')
 # paste_state_data_files(wb)

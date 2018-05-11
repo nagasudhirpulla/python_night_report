@@ -7,7 +7,11 @@ import scada_files_helper
 import state_files_helper
 import ids_helper
 import re
-from itertools import izip
+
+try:
+    from itertools import izip as zip
+except ImportError: # will be 3.x series
+    pass
 
 def hello_xlwings():
     wb = xw.Book.caller()
@@ -18,17 +22,6 @@ def hello_xlwings():
 def hello(name):
     return "hello {0}".format(name)
         
-@xw.func
-@xw.arg('baseURLStr', doc='Base URL')
-@xw.arg('dateObj', doc='Date String')
-def revsFetchURL(baseURLStr, dateObj):
-    return revs_helper.revsFetchURL(baseURLStr, dateObj)
-
-@xw.func
-@xw.arg('baseURLStr', doc='Base URL')
-@xw.arg('dateObj', doc='Date String')
-def revsForDate(baseURLStr, dateObj):
-    return revs_helper.revsForDate(baseURLStr, dateObj)
 
 @xw.func
 @xw.arg('baseURLStr', doc='Base URL')
@@ -37,32 +30,16 @@ def latestRevForDate(baseURLStr, dateObj):
     return revs_helper.latestRevForDate(baseURLStr, dateObj)
 
 @xw.func
-@xw.arg('baseURLStr', doc='Base URL')
-@xw.arg('dateObj', doc='Date String')
-@xw.ret(index=False, header=True, expand='table')
-def state_dfs(baseURLStr, dateObj):
-    return wbes_helper.combine_all_state_dfs(baseURLStr, revs_helper.latestRevForDate(baseURLStr, dateObj), dateObj)
+def config_peak_hr():
+    wb = xw.Book.caller()
+    config_df = ids_helper.get_config_df(wb)
+    peakHr = int(config_df.loc['peak_hrs']['value'])
+    return peakHr
 
 @xw.func
-@xw.arg('baseURLStr', doc='Base URL')
-@xw.arg('dateObj', doc='Date String')
-@xw.ret(index=False, header=True, expand='table')
-def inj_sch_dfs(baseURLStr, dateObj):
-    return wbes_helper.get_isgs_inj_df(baseURLStr, revs_helper.latestRevForDate(baseURLStr, dateObj), dateObj)
-
-@xw.func
-@xw.arg('baseURLStr', doc='Base URL')
-@xw.arg('dateObj', doc='Date String')
-@xw.ret(index=False, header=True, expand='table')
-def dc_dfs(baseURLStr, dateObj):
-    return wbes_helper.get_isgs_dc_df(baseURLStr, revs_helper.latestRevForDate(baseURLStr, dateObj), dateObj)
-
-@xw.func
-@xw.arg('baseURLStr', doc='Base URL')
-@xw.arg('dateObj', doc='Date String')
-@xw.ret(index=False, header=True, expand='table')
-def flow_gate_dfs(baseURLStr, dateObj):
-    return wbes_helper.get_flow_gate_sch_df(baseURLStr, revs_helper.latestRevForDate(baseURLStr, dateObj), dateObj)
+def config_peak_blk():
+    peakHr = config_peak_hr()
+    return 1 + 4*peakHr
 
 @xw.func
 def paste_sch_dfs():
@@ -85,12 +62,12 @@ def get_max_pos(rng):
 
 @xw.func
 def get_max_pos_2_col(rng1, rng2):
-   rng = [a + b for a, b in izip(rng1, rng2)]
+   rng = [a + b for a, b in zip(rng1, rng2)]
    return rng.index(max(rng)) + 1
 
 @xw.func
 def get_max_pos_3_col(rng1, rng2, rng3):
-   rng = [a + b + c for a, b, c in izip(rng1, rng2, rng3)]
+   rng = [a + b + c for a, b, c in zip(rng1, rng2, rng3)]
    return rng.index(max(rng)) + 1
 
 @xw.func
@@ -200,12 +177,17 @@ def get_scada_avg(nameStr):
 @xw.func
 def get_scada_max_import(nameStrs):
     wb = xw.Book.caller()
-    return scada_files_helper.get_max_import(wb, nameStrs)
+    if not (nameStrs == None or nameStrs == ''):
+        return scada_files_helper.get_max_import(wb, nameStrs)
+    return 0
+    
 
 @xw.func
 def get_scada_max_export(nameStrs):
     wb = xw.Book.caller()
-    return scada_files_helper.get_max_export(wb, nameStrs)
+    if not (nameStrs == None or nameStrs == ''):
+        return scada_files_helper.get_max_export(wb, nameStrs)
+    return 0
 
 @xw.func
 def get_scada_val_less_than_prec(nameStr, val):
@@ -220,10 +202,44 @@ def get_scada_val_greater_than_prec(nameStr, val):
 @xw.func
 def get_ire_mw_at(scadaStrs,minute):
     wb = xw.Book.caller()
-    return scada_files_helper.get_ire_mw_at(wb, scadaStrs,int(minute))
+    if not (scadaStrs == None or scadaStrs == ''):
+        return scada_files_helper.get_ire_mw_at(wb, scadaStrs,int(minute))
+    return 0
 
 @xw.func
 def get_ire_import_mu(ireStrs, scadaStrs):
+    wb = xw.Book.caller()
+    if not (ireStrs == None or ireStrs == ''):
+        ireMU = state_files_helper.get_ire_import_mu(wb, ireStrs)
+        if ireMU != None:
+            return ireMU
+    return 0
+
+@xw.func
+def get_ire_export_mu(ireStrs, scadaStrs):
+    wb = xw.Book.caller()
+    if not (ireStrs == None or ireStrs == ''):
+        ireMU = state_files_helper.get_ire_export_mu(wb, ireStrs)
+        if ireMU != None:
+            return ireMU    
+    return 0
+
+@xw.func
+def get_scada_import_mu(ireStrs, scadaStrs):
+    wb = xw.Book.caller()
+    if not (scadaStrs == None or scadaStrs == ''):
+        return scada_files_helper.get_import_mu_val(wb, scadaStrs)
+    return 0
+
+@xw.func
+def get_scada_export_mu(ireStrs, scadaStrs):
+    wb = xw.Book.caller()
+    if not (scadaStrs == None or scadaStrs == ''):
+        return scada_files_helper.get_export_mu_val(wb, scadaStrs)
+    return 0
+
+@xw.func
+def get_ire_scada_import_mu(ireStrs, scadaStrs):
     wb = xw.Book.caller()
     if not (ireStrs == None or ireStrs == ''):
         ireMU = state_files_helper.get_ire_import_mu(wb, ireStrs)
@@ -234,7 +250,7 @@ def get_ire_import_mu(ireStrs, scadaStrs):
     return None
 
 @xw.func
-def get_ire_export_mu(ireStrs, scadaStrs):
+def get_ire_scada_export_mu(ireStrs, scadaStrs):
     wb = xw.Book.caller()
     if not (ireStrs == None or ireStrs == ''):
         ireMU = state_files_helper.get_ire_export_mu(wb, ireStrs)
@@ -244,6 +260,45 @@ def get_ire_export_mu(ireStrs, scadaStrs):
         return scada_files_helper.get_export_mu_val(wb, scadaStrs)
     return None
 
+@xw.func
+def l1_state(stateStr, keyStr):
+    wb = xw.Book.caller()
+    config_df = ids_helper.get_config_df(wb)
+    headingCell = config_df.loc['state_data_cell']['value']
+    sheetName = 'LEVEL1_VALUES'
+    return state_files_helper.get_table_val(wb, sheetName, headingCell, keyStr, stateStr)
+    
+@xw.func
+def l1_gen(genStr, keyStr):
+    wb = xw.Book.caller()
+    config_df = ids_helper.get_config_df(wb)
+    headingCell = config_df.loc['gen_data_cell']['value']
+    sheetName = 'LEVEL1_VALUES'
+    return state_files_helper.get_table_val(wb, sheetName, headingCell, genStr, keyStr)
+
+@xw.func
+def l1_volt(stationStr, keyStr):
+    wb = xw.Book.caller()
+    config_df = ids_helper.get_config_df(wb)
+    headingCell = config_df.loc['volt_data_cell']['value']
+    sheetName = 'LEVEL1_VALUES'
+    return state_files_helper.get_table_val(wb, sheetName, headingCell, stationStr, keyStr)
+
+@xw.func
+def l1_ire_data(lineStr, keyStr):
+    wb = xw.Book.caller()
+    config_df = ids_helper.get_config_df(wb)
+    headingCell = config_df.loc['ire_data_cell']['value']
+    sheetName = 'LEVEL1_VALUES'
+    return state_files_helper.get_table_val(wb, sheetName, headingCell, lineStr, keyStr)
+
+@xw.func
+def l1_ire_sch(pathStr, keyStr):
+    wb = xw.Book.caller()
+    config_df = ids_helper.get_config_df(wb)
+    headingCell = config_df.loc['ire_sch_data_cell']['value']
+    sheetName = 'LEVEL1_VALUES'
+    return state_files_helper.get_table_val(wb, sheetName, headingCell, pathStr, keyStr)
 
 # wb = xw.Book(r'C:/Users/Nagasudhir/Documents/Python Projects/Python Excel Reporting/python_report/python_report.xlsm')
 
