@@ -189,14 +189,16 @@ def get_ire_mw_at(wb, scadaStrs, minute):
     scadaMinuteVals = get_scada_minute_vals_mul_col(wb, scadaStrs.split('|'))
     return scadaMinuteVals[minute]
 
-def get_max_import(wb, scadaStrs):
+def get_max_import(wb, scada_mul, scadaStrs):
     scadaMinuteVals = get_scada_minute_vals_mul_col(wb, scadaStrs.split('|'))
-    importVals = [(0 if x<0 else x) for x in scadaMinuteVals]
+    importVals = [(scada_mul*x) for x in scadaMinuteVals]
+    importVals = [(0 if x<0 else x) for x in importVals]
     return max(importVals)
 
-def get_max_export(wb, scadaStrs):
+def get_max_export(wb, scada_mul, scadaStrs):
     scadaMinuteVals = get_scada_minute_vals_mul_col(wb, scadaStrs.split('|'))
-    importVals = [(0 if x>0 else x) for x in scadaMinuteVals]
+    importVals = [(scada_mul*x) for x in scadaMinuteVals]
+    importVals = [(0 if x>0 else x) for x in importVals]
     return min(importVals)
 
 # wb = xw.Book(r'C:/Users/Nagasudhir/Documents/Python Projects/Python Excel Reporting/python_report/python_report.xlsm')

@@ -7,6 +7,7 @@ import scada_files_helper
 import state_files_helper
 import ids_helper
 import re
+import numpy as np
 
 try:
     from itertools import izip as zip
@@ -55,6 +56,21 @@ def paste_scada_dfs():
 def paste_state_files():
     wb = xw.Book.caller()
     state_files_helper.paste_state_data_files(wb)
+
+@xw.func
+def freq_perc_between(rng, lowVal, highVal):
+    cnt = 0;
+    for freq in rng:
+        if freq < highVal and freq > lowVal:
+            cnt = cnt + 1
+    return cnt*100/len(rng)
+
+@xw.func
+def freq_fvi(rng):
+    fvi = 0;
+    fvi = sum([(freq-50)**2 for freq in rng])
+    fvi = fvi*10/len(rng)
+    return fvi
 
 @xw.func
 def get_max_pos(rng):
@@ -175,18 +191,18 @@ def get_scada_avg(nameStr):
     return scada_files_helper.get_avg_val(wb, nameStr)
 
 @xw.func
-def get_scada_max_import(nameStrs):
+def get_scada_max_import(scada_mul, nameStrs):
     wb = xw.Book.caller()
     if not (nameStrs == None or nameStrs == ''):
-        return scada_files_helper.get_max_import(wb, nameStrs)
+        return scada_files_helper.get_max_import(wb, scada_mul, nameStrs)
     return 0
     
 
 @xw.func
-def get_scada_max_export(nameStrs):
+def get_scada_max_export(scada_mul, nameStrs):
     wb = xw.Book.caller()
     if not (nameStrs == None or nameStrs == ''):
-        return scada_files_helper.get_max_export(wb, nameStrs)
+        return scada_files_helper.get_max_export(wb, scada_mul, nameStrs)
     return 0
 
 @xw.func
@@ -203,7 +219,7 @@ def get_scada_val_greater_than_prec(nameStr, val):
 def get_ire_mw_at(scadaStrs,minute):
     wb = xw.Book.caller()
     if not (scadaStrs == None or scadaStrs == ''):
-        return scada_files_helper.get_ire_mw_at(wb, scadaStrs,int(minute))
+        return scada_files_helper.get_ire_mw_at(wb,scadaStrs,int(minute))
     return 0
 
 @xw.func
