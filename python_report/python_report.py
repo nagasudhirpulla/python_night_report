@@ -59,7 +59,7 @@ def paste_state_files():
 
 @xw.func
 def freq_perc_between(rng, lowVal, highVal):
-    cnt = 0;
+    cnt = 0.0;
     for freq in rng:
         if freq < highVal and freq > lowVal:
             cnt = cnt + 1
@@ -71,6 +71,61 @@ def freq_fvi(rng):
     fvi = sum([(freq-50)**2 for freq in rng])
     fvi = fvi*10/len(rng)
     return fvi
+
+@xw.func
+def freq_quarterly_max(rng):
+    q_max = 0;
+    blkFreqs = []
+    if len(rng) == 8640:
+        for blkInd in range(96):
+            blkFreqs.append(sum(rng[(blkInd*90):((blkInd+1)*90)])/90)
+    q_max = max(blkFreqs)
+    return q_max
+
+@xw.func
+def freq_quarterly_max_time(rng):
+    q_max = 0;
+    blkFreqs = []
+    if len(rng) == 8640:
+        for blkInd in range(96):
+            blkFreqs.append(sum(rng[(blkInd*90):((blkInd+1)*90)])/90)
+    q_max = max(blkFreqs)
+    return scada_files_helper.convert_min_to_time_str((blkFreqs.index(q_max)+1)*4)
+
+@xw.func
+def freq_quarterly_min(rng):
+    q_min = 0;
+    blkFreqs = []
+    if len(rng) == 8640:
+        for blkInd in range(96):
+            blkFreqs.append(sum(rng[(blkInd*90):((blkInd+1)*90)])/90)
+    q_min = min(blkFreqs)
+    return q_min
+
+@xw.func
+def freq_quarterly_min_time(rng):
+    q_min = 0;
+    blkFreqs = []
+    if len(rng) == 8640:
+        for blkInd in range(96):
+            blkFreqs.append(sum(rng[(blkInd*90):((blkInd+1)*90)])/90)
+    q_min = min(blkFreqs)
+    return scada_files_helper.convert_min_to_time_str((blkFreqs.index(q_min)+1)*4)
+
+@xw.func
+def get_max_hourly_mul_rngs(rngStrs):
+    wb = xw.Book.caller()
+    return state_files_helper.get_max_hourly_mul_rngs(wb, rngStrs)
+
+@xw.func
+def get_max_hourly_hr_mul_rngs(rngStrs):
+    wb = xw.Book.caller()
+    return state_files_helper.get_max_hourly_hr_mul_rngs(wb, rngStrs)
+
+@xw.func
+def get_hourly_val_at_mul_rngs(rngStrs, hr):
+    wb = xw.Book.caller()
+    return state_files_helper.get_hourly_val_at_mul_rngs(wb, rngStrs, hr)
 
 @xw.func
 def get_max_pos(rng):
@@ -316,6 +371,14 @@ def l1_ire_sch(pathStr, keyStr):
     sheetName = 'LEVEL1_VALUES'
     return state_files_helper.get_table_val(wb, sheetName, headingCell, pathStr, keyStr)
 
+@xw.func
+def l1_freq(keyStr):
+    wb = xw.Book.caller()
+    config_df = ids_helper.get_config_df(wb)
+    headingCell = config_df.loc['freq_data_cell']['value']
+    sheetName = 'LEVEL1_VALUES'
+    return state_files_helper.get_table_val(wb, sheetName, headingCell, "value", keyStr)
+    
 # wb = xw.Book(r'C:/Users/Nagasudhir/Documents/Python Projects/Python Excel Reporting/python_report/python_report.xlsm')
 
 # paste_sch_dfs(wb)

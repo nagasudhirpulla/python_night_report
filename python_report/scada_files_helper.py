@@ -9,7 +9,10 @@ import ids_helper
 import xlwings as xw
 import os
 import math
-import itertools
+try:
+    from itertools import izip as zip
+except ImportError: # will be 3.x series
+    pass
 
 def get_file_info_df():
     return pd.DataFrame(columns=['volt', 'gen_raw', 'state_raw', 'state_gen', 'inter_regional'], index=['config_key', 'type'], data=[['volt_filename', 'gen_raw_filename', 'state_raw_filename', 'state_gen_filename', 'inter_regional_filename'], ['volt', 'gen_raw', 'state_raw', 'state_gen', 'inter_regional']])
@@ -182,7 +185,7 @@ def get_scada_minute_vals_mul_col(wb, nameStrs):
     minuteValsArr = []
     for col in nameStrs:
         minuteValsArr.append(get_all_minute_vals(wb, col))
-    minuteVals = [sum(x) for x in itertools.izip(*minuteValsArr)]
+    minuteVals = [sum(x) for x in zip(*minuteValsArr)]
     return minuteVals
     
 def get_ire_mw_at(wb, scadaStrs, minute):

@@ -34,6 +34,35 @@ def paste_state_data_files(wb):
         vals = wbSrc.sheets[0].range((1,1), (endRowIndex+1,endColIndex+1)).value
         wb.sheets[sheet_name].range('A1').value = vals
 
+def get_hourly_mul_rngs(wb, rngStrs):
+    hourlyDataArr = []
+    for rngStr in rngStrs:
+        vals = xw.Range(rngStr).value
+        if len(vals) == 24:
+            # this is a 24 hrs data
+            hourlyDataArr.append(vals)
+        elif(len(vals) == 96):
+            # this is block data, so reduce this to hourly data
+            hrlyVals = []
+            for i in range(24):
+                hrlyVals.append((sum(vals[(4*i):(4*(i+1))])/4))
+            hourlyDataArr.append(hrlyVals)
+    # now add all the columns to get the net hourly data sum column
+    finalHrlyData = [sum(x) for x in zip(*hourlyDataArr)]
+    return finalHrlyData
+
+def get_max_hourly_mul_rngs(wb, rngStrs):
+    finalHrlyData = get_hourly_mul_rngs(wb, rngStrs.split('|'))
+    return max(finalHrlyData)
+
+def get_max_hourly_hr_mul_rngs(wb, rngStrs):
+    finalHrlyData = get_hourly_mul_rngs(wb, rngStrs.split('|'))
+    return finalHrlyData.index(max(finalHrlyData)) + 1
+    
+def get_hourly_val_at_mul_rngs(wb, rngStrs, hr):
+    finalHrlyData = get_hourly_mul_rngs(wb, rngStrs.split('|'))
+    return finalHrlyData[int(hr)-1]
+    
 def get_ire_val(wb, ireStrs, headingIndex):
     config_df = ids_helper.get_config_df(wb)
     headingCell = config_df.loc['ire_heading_cell']['value']
