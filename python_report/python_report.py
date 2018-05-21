@@ -6,6 +6,7 @@ import wbes_helper
 import scada_files_helper
 import state_files_helper
 import ids_helper
+import db_helper
 import re
 import numpy as np
 
@@ -22,8 +23,17 @@ def hello_xlwings():
 @xw.func
 def hello(name):
     return "hello {0}".format(name)
-        
 
+@xw.func
+def push_config_to_db(name):
+    wb = xw.Book.caller()
+    db_helper.push_config_to_db(wb)
+    
+@xw.func
+def push_sch_to_db(name):
+    wb = xw.Book.caller()
+    db_helper.push_sch_to_db(wb)
+        
 @xw.func
 @xw.arg('baseURLStr', doc='Base URL')
 @xw.arg('dateObj', doc='Date String')
