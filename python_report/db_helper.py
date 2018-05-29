@@ -459,10 +459,428 @@ def transformVoltDataAndPush():
     finally:
         conn.close()
 
+# transformation step #3
+def transformGenRawStateGenDataAndPush():
+    try:
+        conn = getConn()
+        cur = conn.cursor()
+        # find the peak hour
+        cur.execute("""SELECT val from key_vals where val_key = %s AND entity = %s""", ('peak_hrs', 'config'))
+        rows = cur.fetchall()
+        peak_blk_Ind = int(float(rows[0][0]))*4
+        # get the list of generators for state gen info
+        cur.execute("""SELECT DISTINCT entity from minute_vals where val_type in ('state_gen', 'gen_raw')""")
+        rows = cur.fetchall()
+        stateGenList = []
+        for row in rows:
+            stateGenList.append(row[0])
+        stateGenDict = {}
+        tuples = []
+        # for state_gen find peak_mw, off_peak_mw, max_mw, max_mw_hrs, avg_mw
+        for stateGen in stateGenList:
+            genDict = dict(peak_blk_mw=0, off_peak_blk_mw=0, max_blk_mw=0, max_blk_mw_time=0, avg_mw=0)
+            stateGenDict[stateGen] = genDict
+            # get the minute values of the generator            
+            cur.execute("""SELECT val from minute_vals where val_type in ('state_gen', 'gen_raw') and entity=%s order by min_num asc""", (stateGen,))
+            rows = cur.fetchall()
+            if(len(rows) != 1440):
+                continue
+            minVals = []
+            for row in rows:
+                minVals.append(row[0])
+            # convert minVals into blkVals
+            blkVals = []
+            for blkInd in range(96):
+                blkVals.append(sum(minVals[(blkInd*15):((blkInd+1)*15)])/15)
+            genDict['peak_blk_mw'] = blkVals[peak_blk_Ind]
+            genDict['off_peak_blk_mw'] = blkVals[2]
+            genDict['max_blk_mw'] = max(blkVals)
+            genDict['max_blk_mw_time'] = '-'.join(convert_blk_to_time_strs(blkVals.index(genDict['max_blk_mw'])+1))
+            genDict['avg_mw'] = sum(blkVals)/96
+            for keyStr in genDict.keys():
+                tuples.append(dict(val_key=keyStr, entity=stateGen, val=genDict[keyStr]))
+            stateGenDict[stateGen] = genDict
+        tuples_write = """
+            insert into key_vals (
+                val_key,
+                entity,
+                val
+            ) values %s on conflict(val_key, entity) do update set val = EXCLUDED.val
+        """
+        # push tuples to db
+        execute_values (
+            cur,
+            tuples_write,
+            tuples,
+            template = """(
+                %(val_key)s,
+                %(entity)s,
+                %(val)s
+            )""",
+            page_size = 1000
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except psycopg2.DatabaseError as e:
+        print e
+    finally:
+        conn.close()
+
+# transformation step 4
+def transformStateSchDataAndPush():
+    # for each state find peak, off_peak stoa, pxil, iexl sch_mw,mus
+    # for each state find max, min isgs+lta+mtoa, stoa, iexl, pxil sch_mw
+    try:
+        conn = getConn()
+        cur = conn.cursor()
+        # find the peak hour
+        cur.execute("""SELECT val from key_vals where val_key = %s AND entity = %s""", ('peak_hrs', 'config'))
+        rows = cur.fetchall()
+        peak_blk_Ind = int(float(rows[0][0]))*4
+        # get the list of generators for state gen info
+        cur.execute("""SELECT distinct name from constituents""")
+        rows = cur.fetchall()
+        consList = []
+        for row in rows:
+            consList.append(row[0])
+        consSchDict = {}
+        tuples = []
+        for cons in consList:
+            schDict = dict(bilateral_3hrs_mw=0, iex_3hrs_mw=0, pxil_3hrs_mw=0,
+                           bilateral_peak_mw=0, iex_peak_mw=0, pxil_peak_mw=0, 
+                           isgs_lt_mt_sch_mu=0, stoa_mu=0, exchange_mu=0, total_sch_mu=0,
+                           max_isgs_lt_mt_mw=0, min_isgs_lt_mt_mw=0, max_stoa_mw=0, min_stoa_mw=0,
+                           max_iex_mw=0, min_iex_mw=0, max_pxil_mw=0, min_pxil_mw=0)
+            consSchDict[cons] = schDict
+            bilateralSchVals = []
+            # get stoa vals
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('STOA', cons))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for row in rows:
+                bilateralSchVals.append(row[0])
+            schDict['bilateral_3hrs_mw'] = bilateralSchVals[2]
+            schDict['bilateral_peak_mw'] = bilateralSchVals[peak_blk_Ind]
+            schDict['stoa_mu'] = sum(bilateralSchVals)/4000
+            schDict['max_stoa_mw'] = max(bilateralSchVals)
+            schDict['min_stoa_mw'] = min(bilateralSchVals)
+            iexVals = []
+            # get iex vals
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('IEX', cons))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for row in rows:
+                iexVals.append(row[0])
+            schDict['iex_3hrs_mw'] = iexVals[2]
+            schDict['iex_peak_mw'] = iexVals[peak_blk_Ind]
+            schDict['exchange_mu'] = schDict['exchange_mu'] + sum(iexVals)/4000
+            schDict['max_iex_mw'] = max(iexVals)
+            schDict['min_iex_mw'] = min(iexVals)
+            pxVals = []
+            # get px vals
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('IEX', cons))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for row in rows:
+                pxVals.append(row[0])
+            schDict['pxil_3hrs_mw'] = pxVals[2]
+            schDict['pxil_peak_mw'] = pxVals[peak_blk_Ind]
+            schDict['exchange_mu'] = schDict['exchange_mu'] + sum(pxVals)/4000
+            schDict['max_pxil_mw'] = max(pxVals)
+            schDict['min_pxil_mw'] = min(pxVals)
+            totSchVals = []
+            # get px vals
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('Net Total', cons))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for row in rows:
+                totSchVals.append(row[0])
+            schDict['total_sch_mu'] = sum(totSchVals)/4000
+            # get isgs_lt_mt vals
+            isgsLtMtVals = []
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('ISGS', cons))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for row in rows:
+                isgsLtMtVals.append(row[0])
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('LTA', cons))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for i in range(96):
+                isgsLtMtVals[i] = isgsLtMtVals[i] + row[0]
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('MTOA', cons))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for i in range(96):
+                isgsLtMtVals[i] = isgsLtMtVals[i] + row[0]
+            schDict['isgs_lt_mt_sch_mu'] = sum(isgsLtMtVals)/4000
+            schDict['min_isgs_lt_mt_mw'] = min(isgsLtMtVals)
+            schDict['max_isgs_lt_mt_mw'] = max(isgsLtMtVals)
+            for keyStr in schDict.keys():
+                tuples.append(dict(val_key=keyStr, entity=cons, val=schDict[keyStr]))
+            consSchDict[cons] = schDict
+        tuples_write = """
+            insert into key_vals (
+                val_key,
+                entity,
+                val
+            ) values %s on conflict(val_key, entity) do update set val = EXCLUDED.val
+        """
+        # push tuples to db
+        execute_values (
+            cur,
+            tuples_write,
+            tuples,
+            template = """(
+                %(val_key)s,
+                %(entity)s,
+                %(val)s
+            )""",
+            page_size = 1000
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except psycopg2.DatabaseError as e:
+        print e
+    finally:
+        conn.close()
+
+# transformation step 4
+def transformIRSchDataAndPush():
+    # for each interregional path find, isgs, lta, mtoa, stoa, pxil, iexl, total ir schedules
+    try:
+        conn = getConn()
+        cur = conn.cursor()
+        irPaths = [dict(name='wr-nr', exp='west_north', imp='north_west'), 
+                   dict(name='wr-er', exp='west_east', imp='east_west'), 
+                   dict(name='wr-sr', exp='west_south', imp='south_west')]
+        irPathSchDict = {}
+        tuples = []
+        for irPath in irPaths:
+            pathSchDict = dict(isgs_lta_mtoa_mu=0, stoa_mu=0, px_mu=0, net_sch_mu=0)
+            irPathSchDict[irPath['name']] = pathSchDict
+            # get isgs_import sch
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('ISGS', irPath['imp']))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            isgsLtMtVals = []
+            for row in rows:
+                isgsLtMtVals.append(row[0])
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('ISGS', irPath['exp']))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for i in range(96):
+                isgsLtMtVals[i] = isgsLtMtVals[i] - rows[i][0]
+            # getting lta values
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('LTA', irPath['imp']))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for i in range(96):
+                isgsLtMtVals[i] = isgsLtMtVals[i] + rows[i][0]
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('LTA', irPath['exp']))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for i in range(96):
+                isgsLtMtVals[i] = isgsLtMtVals[i] - rows[i][0]
+            # getting mtoa values
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('MTOA', irPath['imp']))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for i in range(96):
+                isgsLtMtVals[i] = isgsLtMtVals[i] + rows[i][0]
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('MTOA', irPath['exp']))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for i in range(96):
+                isgsLtMtVals[i] = isgsLtMtVals[i] - rows[i][0]
+            pathSchDict['isgs_lta_mtoa_mu'] = sum(isgsLtMtVals)/4000
+            # getting stoa values
+            stoaVals = []
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('STOA', irPath['imp']))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for row in rows:
+                stoaVals.append(row[0])
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('STOA', irPath['exp']))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for i in range(96):
+                stoaVals[i] = stoaVals[i] - rows[i][0]
+            pathSchDict['stoa_mu'] = sum(stoaVals)/4000
+            # getting pxi values
+            exchangeVals = []
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('PXI', irPath['imp']))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for row in rows:
+                exchangeVals.append(row[0])
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('PXI', irPath['exp']))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for i in range(96):
+                exchangeVals[i] = exchangeVals[i] - rows[i][0]
+            # getting iex values
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('IEX', irPath['imp']))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for i in range(96):
+                exchangeVals[i] = exchangeVals[i] + rows[i][0]
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('IEX', irPath['exp']))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for i in range(96):
+                exchangeVals[i] = exchangeVals[i] - rows[i][0]           
+            pathSchDict['px_mu'] = sum(exchangeVals)/4000
+            # getting net_sch values
+            netSchVals = []
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('Net Total', irPath['imp']))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for row in rows:
+                netSchVals.append(row[0])
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('Net Total', irPath['exp']))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for i in range(96):
+                netSchVals[i] = netSchVals[i] - rows[i][0]
+            pathSchDict['net_sch_mu'] = sum(netSchVals)/4000
+            # push the path summary values to the tuples
+            for keyStr in pathSchDict.keys():
+                tuples.append(dict(val_key=keyStr, entity=irPath['name'], val=pathSchDict[keyStr]))            
+            irPathSchDict[irPath['name']] = pathSchDict
+        # push all the tuples to db
+        tuples_write = """
+            insert into key_vals (
+                val_key,
+                entity,
+                val
+            ) values %s on conflict(val_key, entity) do update set val = EXCLUDED.val
+        """
+        # push tuples to db
+        execute_values (
+            cur,
+            tuples_write,
+            tuples,
+            template = """(
+                %(val_key)s,
+                %(entity)s,
+                %(val)s
+            )""",
+            page_size = 1000
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except psycopg2.DatabaseError as e:
+        print e
+    finally:
+        conn.close()
+
+# transformation step 5
+def transformIRScadaDataAndPush():
+    # for interregional_lines find max_export, max_export_hrs, max_import, max_import_hrs, export_mu, import_mu
+    try:
+        conn = getConn()
+        cur = conn.cursor()
+        tuples = []
+        # get the list of interregional lines for ir flow info
+        lineNamesList = []
+        cur.execute("""SELECT DISTINCT entity from minute_vals where val_type = 'inter_regional'""")
+        rows = cur.fetchall()
+        for row in rows:
+            lineNamesList.append(row[0])
+        lineFlowDict = {}
+        for lineName in lineNamesList:
+            lineSummaryDict = dict(max_export=0, max_export_hrs='00:00', export_mu=0, max_import=0, max_import_hrs='00:00', import_mu=0)
+            lineFlowDict[lineName] = lineSummaryDict
+            # get the minute values of the line flow            
+            cur.execute("""SELECT val from minute_vals where val_type = 'inter_regional' and entity=%s order by min_num asc""", (lineName,))
+            rows = cur.fetchall()
+            if(len(rows) != 1440):
+                continue
+            minVals = []
+            for row in rows:
+                minVals.append(-1*row[0])
+            # find the max_export (+ve values) and make save the result as negative
+            #stub
+            exportVals = [(lambda x: (0 if x>0 else x))(x) for x in minVals]
+            max_export = min(exportVals)
+            export_mu = sum(exportVals)/60000
+            max_export_hrs = convert_min_to_time_str(exportVals.index(max_export))
+            importVals = [(lambda x: (0 if x<0 else x))(x) for x in minVals]
+            max_import = max(importVals)
+            import_mu = sum(importVals)/60000
+            max_import_hrs = convert_min_to_time_str(importVals.index(max_import))
+            lineSummaryDict['max_export'] = max_export
+            lineSummaryDict['export_mu'] = export_mu
+            lineSummaryDict['max_export_hrs'] = max_export_hrs
+            lineSummaryDict['max_import'] = max_import
+            lineSummaryDict['import_mu'] = import_mu
+            lineSummaryDict['max_import_hrs'] = max_import_hrs
+            # push the path summary values to the tuples
+            for keyStr in lineSummaryDict.keys():
+                tuples.append(dict(val_key=keyStr, entity=lineName, val=lineSummaryDict[keyStr]))
+            lineFlowDict[lineName] = lineSummaryDict
+        # push all the tuples to db
+        tuples_write = """
+            insert into key_vals (
+                val_key,
+                entity,
+                val
+            ) values %s on conflict(val_key, entity) do update set val = EXCLUDED.val
+        """
+        # push tuples to db
+        execute_values (
+            cur,
+            tuples_write,
+            tuples,
+            template = """(
+                %(val_key)s,
+                %(entity)s,
+                %(val)s
+            )""",
+            page_size = 1000
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except psycopg2.DatabaseError as e:
+        print e
+    finally:
+        conn.close()
+            
 def convert_min_to_time_str(minReq):
     hrs = math.floor(minReq/60)
     mins = minReq - hrs*60
     return '{0}:{1}'.format(str(int(hrs)).zfill(2), str(int(mins)).zfill(2))
+
+def convert_blk_to_time_strs(blk):
+    startMins = (blk-1)*15
+    endMins = blk*15
+    return [convert_min_to_time_str(startMins), convert_min_to_time_str(endMins)]
 '''
 # Insert a row
 conn = getConn()
