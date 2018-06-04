@@ -243,7 +243,67 @@ def push_key_vals_to_db(wb):
     conn.commit()
     cur.close()
     conn.close()
+    
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        pass
+ 
+    try:
+        import unicodedata
+        unicodedata.numeric(s)
+        return True
+    except (TypeError, ValueError):
+        pass
+    return False
 
+def push_ire_manual_to_db(wb):
+    try:
+        sheetName = 'IRE_MANUAL'
+        valsArr= wb.sheets[sheetName].range('A1').options(expand='table').value
+        tuples_write = """
+            insert into key_vals (
+                val_key,
+                entity,
+                val
+            ) values %s on conflict(val_key, entity) do update set val = EXCLUDED.val
+        """
+        tuples = []
+        conn = getConn()
+        cur = conn.cursor()
+        for ind in range(1, len(valsArr)):
+            if(len(valsArr[ind]) < 3):
+                continue
+            entities = valsArr[ind][0].split('|')
+            importMUVal = ''
+            exportMUVal = ''
+            if(is_number(valsArr[ind][3])):
+                importMUVal = float(valsArr[ind][3]) / len(entities)
+            if(is_number(valsArr[ind][4])):
+                exportMUVal = float(valsArr[ind][4]) / len(entities)        
+            for entity in entities:            
+                tuples.append(dict(val_key='import_mu', entity=entity, val=importMUVal))
+                tuples.append(dict(val_key='export_mu', entity=entity, val=exportMUVal))
+        execute_values (
+            cur,
+            tuples_write,
+            tuples,
+            template = """(
+                %(val_key)s,
+                %(entity)s,
+                %(val)s
+            )""",
+            page_size = 1000
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except psycopg2.DatabaseError as e:
+        print e
+    finally:
+        conn.close()
 
 # transformation step #1
 def transformStateDataAndPush():
@@ -799,10 +859,37 @@ def transformIRSchDataAndPush():
     finally:
         conn.close()
 
+# get the ire lines export_mu, import_mu dict from db
+def fetchDBIRElinesExportImportMUDict():
+    try:
+        conn = getConn()
+        cur = conn.cursor()
+        lineExpDict = {}
+        lineImpDict = {}
+        cur.execute("""SELECT entity, val_key, val from key_vals where val_key IN ('export_mu', 'import_mu')""")
+        rows = cur.fetchall()
+        for row in rows:
+            if row[1] == 'export_mu':
+                lineExpDict[row[0]] = row[2]
+            elif row[1] == 'import_mu':
+                lineImpDict[row[0]] = row[2]
+        conn.commit()
+        cur.close()
+        conn.close()
+    except psycopg2.DatabaseError as e:
+        print e
+        lineExpDict = {}
+        lineImpDict = {}
+    finally:
+        conn.close()
+        return (lineImpDict, lineExpDict)
+
 # transformation step 5
 def transformIRScadaDataAndPush():
     # for interregional_lines find max_export, max_export_hrs, max_import, max_import_hrs, export_mu, import_mu
     try:
+        # get export import mu values from ire manual data of db
+        IRElineImpDict, IRElineExpDict = fetchDBIRElinesExportImportMUDict()
         conn = getConn()
         cur = conn.cursor()
         tuples = []
@@ -825,7 +912,6 @@ def transformIRScadaDataAndPush():
             for row in rows:
                 minVals.append(-1*row[0])
             # find the max_export (+ve values) and make save the result as negative
-            #stub
             exportVals = [(lambda x: (0 if x>0 else x))(x) for x in minVals]
             max_export = min(exportVals)
             export_mu = sum(exportVals)/60000
@@ -835,10 +921,19 @@ def transformIRScadaDataAndPush():
             import_mu = sum(importVals)/60000
             max_import_hrs = convert_min_to_time_str(importVals.index(max_import))
             lineSummaryDict['max_export'] = max_export
-            lineSummaryDict['export_mu'] = export_mu
+            # assign computed scada value only if ire manual data is not present
+            if hasattr(IRElineImpDict, lineName) and IRElineImpDict[lineName] != '':
+                lineSummaryDict['import_mu'] = IRElineImpDict[lineName]
+            else:
+                lineSummaryDict['import_mu'] = import_mu
+            
+            if hasattr(IRElineExpDict, lineName) and IRElineExpDict[lineName] != '':
+                lineSummaryDict['export_mu'] = IRElineExpDict[lineName]
+            else:
+                lineSummaryDict['export_mu'] = export_mu
+                
             lineSummaryDict['max_export_hrs'] = max_export_hrs
             lineSummaryDict['max_import'] = max_import
-            lineSummaryDict['import_mu'] = import_mu
             lineSummaryDict['max_import_hrs'] = max_import_hrs
             # push the path summary values to the tuples
             for keyStr in lineSummaryDict.keys():
