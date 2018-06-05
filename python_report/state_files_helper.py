@@ -11,10 +11,10 @@ import xlwings as xw
 
 def get_state_file_info_df():
     return pd.DataFrame(
-            columns=['cseb', 'dd', 'dnh', 'esil', 'geb', 'goa', 'mp', 'mseb', 'ire'], 
+            columns=['cseb', 'dd', 'dnh', 'esil', 'geb', 'goa', 'mp', 'mseb', 'ire', 'nldc_freq'], 
             index=['config_key', 'sheet_name'], 
-            data=[['cseb_filename', 'dd_filename', 'dnh_filename', 'esil_filename', 'geb_filename', 'goa_filename', 'mp_filename', 'mseb_filename', 'ire_filename'], 
-                  ['CSEB', 'DD', 'DNH', 'ESIL', 'GEB', 'GOA', 'MP', 'MSEB', 'IRE']])
+            data=[['cseb_filename', 'dd_filename', 'dnh_filename', 'esil_filename', 'geb_filename', 'goa_filename', 'mp_filename', 'mseb_filename', 'ire_filename', 'nldc_freq_filename'], 
+                  ['CSEB', 'DD', 'DNH', 'ESIL', 'GEB', 'GOA', 'MP', 'MSEB', 'IRE', 'FREQ']])
 
 def get_state_df(filename, fileType):
     df = pd.read_excel(filename, header=None, index_col=None)
@@ -31,6 +31,9 @@ def paste_state_data_files(wb):
         wbSrc = xw.Book(filename)
         endColIndex = 299
         endRowIndex = 299
+        if sheet_name == 'FREQ':
+            endRowIndex = 8650
+            endColIndex = 1
         vals = wbSrc.sheets[0].range((1,1), (endRowIndex+1,endColIndex+1)).value
         wb.sheets[sheet_name].range('A1').value = vals
 

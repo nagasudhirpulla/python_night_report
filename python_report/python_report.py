@@ -25,15 +25,65 @@ def hello(name):
     return "hello {0}".format(name)
 
 @xw.func
-def push_config_to_db(name):
+def push_all_data_to_db():
+    wb = xw.Book.caller()
+    db_helper.push_config_to_db(wb)
+    db_helper.push_sch_to_db(wb)
+    db_helper.push_scada_to_db(wb)
+    db_helper.push_hourly_to_db(wb)
+    db_helper.push_key_vals_to_db(wb)
+    db_helper.push_ire_manual_to_db(wb)
+    
+@xw.func
+def push_config_to_db():
     wb = xw.Book.caller()
     db_helper.push_config_to_db(wb)
     
 @xw.func
-def push_sch_to_db(name):
+def push_sch_to_db():
     wb = xw.Book.caller()
     db_helper.push_sch_to_db(wb)
-        
+    
+@xw.func
+def push_scada_to_db():
+    wb = xw.Book.caller()
+    db_helper.push_scada_to_db(wb)
+    
+@xw.func
+def push_hourly_to_db():
+    wb = xw.Book.caller()
+    db_helper.push_hourly_to_db(wb)
+    
+@xw.func
+def push_key_vals_to_db():
+    wb = xw.Book.caller()
+    db_helper.push_key_vals_to_db(wb)
+
+@xw.func
+def push_ire_manual_to_db():
+    wb = xw.Book.caller()
+    db_helper.push_ire_manual_to_db(wb)
+    
+@xw.func
+def transform_raw_data_db():
+    db_helper.transformRawData()
+
+@xw.func
+def dump_key_val_data():
+    wb = xw.Book.caller()
+    sheet_name = 'REPORT_VALS'
+    rows = db_helper.getAllKeyValsExceptConfig()
+    # convert the tuples list into a list of arrays and also combine entity and val_key as entity_val_key
+    rows = [[row[0]+'|'+row[1], row[2]] for row in rows]
+    # dump all the rows into the sheet
+    wb.sheets[sheet_name].range('A1').value = rows
+    
+@xw.func
+def push_modified_report_data():
+    wb = xw.Book.caller()
+    sheet_name = 'REPORT_VALS'
+    db_helper.push_report_vals_to_db(wb, sheet_name)
+
 @xw.func
 @xw.arg('baseURLStr', doc='Base URL')
 @xw.arg('dateObj', doc='Date String')

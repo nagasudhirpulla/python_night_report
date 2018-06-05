@@ -29,35 +29,40 @@ def getConn():
     return conn
 
 def push_config_to_db(wb):
-    config_df = ids_helper.get_config_df(wb)
-    conn = getConn()
-    cur = conn.cursor()
-    tuples = []
-    for indexVal in config_df.index.values:
-        tuples.append(dict(val_key=indexVal, val=str(config_df.loc[indexVal][0]), entity='config'))
-    tuples_write = """
-        insert into key_vals (
-            val_key,
-            entity,
-            val
-        ) values %s on conflict(val_key, entity) do update set val = EXCLUDED.val
-    """
-    conn = getConn()
-    cur = conn.cursor()
-    execute_values (
-        cur,
-        tuples_write,
-        tuples,
-        template = """(
-            %(val_key)s,
-            %(entity)s,
-            %(val)s
-        )""",
-        page_size = 1000
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
+    try:
+        config_df = ids_helper.get_config_df(wb)
+        conn = getConn()
+        cur = conn.cursor()
+        tuples = []
+        for indexVal in config_df.index.values:
+            tuples.append(dict(val_key=indexVal, val=str(config_df.loc[indexVal][0]), entity='config'))
+        tuples_write = """
+            insert into key_vals (
+                val_key,
+                entity,
+                val
+            ) values %s on conflict(val_key, entity) do update set val = EXCLUDED.val
+        """
+        conn = getConn()
+        cur = conn.cursor()
+        execute_values (
+            cur,
+            tuples_write,
+            tuples,
+            template = """(
+                %(val_key)s,
+                %(entity)s,
+                %(val)s
+            )""",
+            page_size = 1000
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except psycopg2.DatabaseError as e:
+        print e
+    finally:
+        conn.close()
 
 def getDBConfigVal(config_params):
     conn = getConn()
@@ -74,175 +79,195 @@ def getDBConfigVal(config_params):
         return None
 
 def push_sch_to_db(wb):
-    tuples_write = """
-        insert into blk_vals (
-            sch_type,
-            entity,
-            blk,
-            val
-        ) values %s on conflict(sch_type, entity, blk) do update set val = EXCLUDED.val
-    """
-    # firstBlkRow = getDBConfigVal(['sch_first_blk_row'])['sch_first_blk_row']
-    schedulesSheet = 'SCH'
-    entitiesList= wb.sheets[schedulesSheet].range('B2').options(expand='right').value
-    schTypesList= wb.sheets[schedulesSheet].range('B3').options(expand='right').value
-    valsArr= wb.sheets[schedulesSheet].range('B4').options(expand='table').value
-    excludedSchTypes = ['Time Block', 'Time Desc']
-    conn = getConn()
-    # cur = conn.cursor()
-    tuples = []
-    for entityIndex in range(len(entitiesList)):
-        entity = entitiesList[entityIndex]
-        schType = schTypesList[entityIndex]
-        if schType in excludedSchTypes:
-            continue
-        # Dump the 96 block values into the DB
-        cur = conn.cursor()
+    try:
+        tuples_write = """
+            insert into blk_vals (
+                sch_type,
+                entity,
+                blk,
+                val
+            ) values %s on conflict(sch_type, entity, blk) do update set val = EXCLUDED.val
+        """
+        # firstBlkRow = getDBConfigVal(['sch_first_blk_row'])['sch_first_blk_row']
+        schedulesSheet = 'SCH'
+        entitiesList= wb.sheets[schedulesSheet].range('B2').options(expand='right').value
+        schTypesList= wb.sheets[schedulesSheet].range('B3').options(expand='right').value
+        valsArr= wb.sheets[schedulesSheet].range('B4').options(expand='table').value
+        excludedSchTypes = ['Time Block', 'Time Desc']
+        conn = getConn()
+        # cur = conn.cursor()
         tuples = []
-        for blk in range(1,97):
-            rowInd = blk - 1
-            val = valsArr[rowInd][entityIndex]
-            tuples.append(dict(sch_type=schType, entity=entity, blk=blk, val = val))        
-        
-        execute_values (
-            cur,
-            tuples_write,
-            tuples,
-            template = """(
-                %(sch_type)s,
-                %(entity)s,
-                %(blk)s,
-                %(val)s
-            )""",
-            page_size = 1450
-        )
-        conn.commit()
-    cur.close()
-    conn.close()
+        for entityIndex in range(len(entitiesList)):
+            entity = entitiesList[entityIndex]
+            schType = schTypesList[entityIndex]
+            if schType in excludedSchTypes:
+                continue
+            # Dump the 96 block values into the DB
+            cur = conn.cursor()
+            tuples = []
+            for blk in range(1,97):
+                rowInd = blk - 1
+                val = valsArr[rowInd][entityIndex]
+                tuples.append(dict(sch_type=schType, entity=entity, blk=blk, val = val))        
+            
+            execute_values (
+                cur,
+                tuples_write,
+                tuples,
+                template = """(
+                    %(sch_type)s,
+                    %(entity)s,
+                    %(blk)s,
+                    %(val)s
+                )""",
+                page_size = 1450
+            )
+            conn.commit()
+        cur.close()
+        conn.close()
+    except psycopg2.DatabaseError as e:
+        print e
+    finally:
+        conn.close()
     
 def push_scada_to_db(wb):
-    tuples_write = """
-        insert into minute_vals (
-            val_type,
-            entity,
-            min_num,
-            val
-        ) values %s on conflict(val_type, entity, min_num) do update set val = EXCLUDED.val
-    """
-    scadaSheet = 'SCADA'
-    entitiesList= wb.sheets[scadaSheet].range('B1').options(expand='right').value
-    valTypesList= wb.sheets[scadaSheet].range('B2').options(expand='right').value
-    valsArr= wb.sheets[scadaSheet].range('B3').options(expand='table').value
-    excludedEntTypes = ['Timestamp']
-    conn = getConn()
-    # cur = conn.cursor()
-    tuples = []
-    for entityIndex in range(len(entitiesList)):
-        entity = entitiesList[entityIndex]
-        valType = valTypesList[entityIndex]
-        if entity in excludedEntTypes:
-            continue
-        # Dump the 96 block values into the DB
-        cur = conn.cursor()
+    try:
+        tuples_write = """
+            insert into minute_vals (
+                val_type,
+                entity,
+                min_num,
+                val
+            ) values %s on conflict(val_type, entity, min_num) do update set val = EXCLUDED.val
+        """
+        scadaSheet = 'SCADA'
+        entitiesList= wb.sheets[scadaSheet].range('B1').options(expand='right').value
+        valTypesList= wb.sheets[scadaSheet].range('B2').options(expand='right').value
+        valsArr= wb.sheets[scadaSheet].range('B3').options(expand='table').value
+        excludedEntTypes = ['Timestamp']
+        conn = getConn()
+        # cur = conn.cursor()
         tuples = []
-        for min_num in range(1,1441):
-            rowInd = min_num - 1
-            val = valsArr[rowInd][entityIndex]
-            tuples.append(dict(val_type=valType, entity=entity, min_num=min_num, val = val))        
-        
-        execute_values (
-            cur,
-            tuples_write,
-            tuples,
-            template = """(
-                %(val_type)s,
-                %(entity)s,
-                %(min_num)s,
-                %(val)s
-            )""",
-            page_size = 1450
-        )
-        conn.commit()
-    cur.close()
-    conn.close()
+        for entityIndex in range(len(entitiesList)):
+            entity = entitiesList[entityIndex]
+            valType = valTypesList[entityIndex]
+            if entity in excludedEntTypes:
+                continue
+            # Dump the 96 block values into the DB
+            cur = conn.cursor()
+            tuples = []
+            for min_num in range(1,1441):
+                rowInd = min_num - 1
+                val = valsArr[rowInd][entityIndex]
+                tuples.append(dict(val_type=valType, entity=entity, min_num=min_num, val = val))        
+            
+            execute_values (
+                cur,
+                tuples_write,
+                tuples,
+                template = """(
+                    %(val_type)s,
+                    %(entity)s,
+                    %(min_num)s,
+                    %(val)s
+                )""",
+                page_size = 1450
+            )
+            conn.commit()
+        cur.close()
+        conn.close()
+    except psycopg2.DatabaseError as e:
+        print e
+    finally:
+        conn.close()
     
 def push_hourly_to_db(wb):
-    tuples_write = """
-        insert into hour_vals (
-            val_type,
-            entity,
-            hour_num,
-            val
-        ) values %s on conflict(val_type, entity, hour_num) do update set val = EXCLUDED.val
-    """
-    sheetName = 'HOURLY'
-    entitiesList= wb.sheets[sheetName].range('A1').options(expand='right').value
-    valTypesList= wb.sheets[sheetName].range('A2').options(expand='right').value
-    valsArr= wb.sheets[sheetName].range('A3').options(expand='table').value
-    conn = getConn()
-    # cur = conn.cursor()
-    tuples = []
-    for entityIndex in range(len(entitiesList)):
-        entity = entitiesList[entityIndex]
-        valType = valTypesList[entityIndex]
-        # Dump the 24 HOUR values into the DB
-        cur = conn.cursor()
+    try:
+        tuples_write = """
+            insert into hour_vals (
+                val_type,
+                entity,
+                hour_num,
+                val
+            ) values %s on conflict(val_type, entity, hour_num) do update set val = EXCLUDED.val
+        """
+        sheetName = 'HOURLY'
+        entitiesList= wb.sheets[sheetName].range('A1').options(expand='right').value
+        valTypesList= wb.sheets[sheetName].range('A2').options(expand='right').value
+        valsArr= wb.sheets[sheetName].range('A3').options(expand='table').value
+        conn = getConn()
+        # cur = conn.cursor()
         tuples = []
-        for hour_num in range(1,25):
-            rowInd = hour_num - 1
-            val = valsArr[rowInd][entityIndex]
-            tuples.append(dict(val_type=valType, entity=entity, hour_num=hour_num, val = val))        
-        
+        for entityIndex in range(len(entitiesList)):
+            entity = entitiesList[entityIndex]
+            valType = valTypesList[entityIndex]
+            # Dump the 24 HOUR values into the DB
+            cur = conn.cursor()
+            tuples = []
+            for hour_num in range(1,25):
+                rowInd = hour_num - 1
+                val = valsArr[rowInd][entityIndex]
+                tuples.append(dict(val_type=valType, entity=entity, hour_num=hour_num, val = val))        
+            
+            execute_values (
+                cur,
+                tuples_write,
+                tuples,
+                template = """(
+                    %(val_type)s,
+                    %(entity)s,
+                    %(hour_num)s,
+                    %(val)s
+                )""",
+                page_size = 50
+            )
+            conn.commit()
+        cur.close()
+        conn.close()
+    except psycopg2.DatabaseError as e:
+        print e
+    finally:
+        conn.close()
+    
+def push_key_vals_to_db(wb):
+    try:
+        sheetName = 'KEYVALUES'
+        valsArr= wb.sheets[sheetName].range('A1').options(expand='table').value
+        tuples_write = """
+            insert into key_vals (
+                val_key,
+                entity,
+                val
+            ) values %s on conflict(val_key, entity) do update set val = EXCLUDED.val
+        """
+        tuples = []
+        conn = getConn()
+        cur = conn.cursor()
+        for ind in range(len(valsArr)):
+            if(len(valsArr[ind]) < 3):
+                continue
+            entity = valsArr[ind][0]
+            val_key = valsArr[ind][1]
+            val = valsArr[ind][2]
+            tuples.append(dict(val_key=val_key, entity=entity, val=val))
         execute_values (
             cur,
             tuples_write,
             tuples,
             template = """(
-                %(val_type)s,
+                %(val_key)s,
                 %(entity)s,
-                %(hour_num)s,
                 %(val)s
             )""",
-            page_size = 50
+            page_size = 1000
         )
         conn.commit()
-    cur.close()
-    conn.close()
-    
-def push_key_vals_to_db(wb):
-    sheetName = 'KEYVALUES'
-    valsArr= wb.sheets[sheetName].range('A1').options(expand='table').value
-    tuples_write = """
-        insert into key_vals (
-            val_key,
-            entity,
-            val
-        ) values %s on conflict(val_key, entity) do update set val = EXCLUDED.val
-    """
-    tuples = []
-    conn = getConn()
-    cur = conn.cursor()
-    for ind in range(len(valsArr)):
-        if(len(valsArr[ind]) < 3):
-            continue
-        entity = valsArr[ind][0]
-        val_key = valsArr[ind][1]
-        val = valsArr[ind][2]
-        tuples.append(dict(val_key=val_key, entity=entity, val=val))
-    execute_values (
-        cur,
-        tuples_write,
-        tuples,
-        template = """(
-            %(val_key)s,
-            %(entity)s,
-            %(val)s
-        )""",
-        page_size = 1000
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
+        cur.close()
+        conn.close()
+    except psycopg2.DatabaseError as e:
+        print e
+    finally:
+        conn.close()
     
 def is_number(s):
     try:
@@ -261,7 +286,7 @@ def is_number(s):
 
 def push_ire_manual_to_db(wb):
     try:
-        sheetName = 'IRE_MANUAL'
+        sheetName = 'IRE_MANUAL_DB'
         valsArr= wb.sheets[sheetName].range('A1').options(expand='table').value
         tuples_write = """
             insert into key_vals (
@@ -304,6 +329,14 @@ def push_ire_manual_to_db(wb):
         print e
     finally:
         conn.close()
+
+def transformRawData():
+    transformStateDataAndPush()
+    transformVoltDataAndPush()
+    transformGenRawStateGenDataAndPush()
+    transformStateSchDataAndPush()
+    transformIRSchDataAndPush()
+    transformIRScadaDataAndPush()
 
 # transformation step #1
 def transformStateDataAndPush():
@@ -587,7 +620,7 @@ def transformGenRawStateGenDataAndPush():
     finally:
         conn.close()
 
-# transformation step 4
+# transformation step #4
 def transformStateSchDataAndPush():
     # for each state find peak, off_peak stoa, pxil, iexl sch_mw,mus
     # for each state find max, min isgs+lta+mtoa, stoa, iexl, pxil sch_mw
@@ -714,7 +747,7 @@ def transformStateSchDataAndPush():
     finally:
         conn.close()
 
-# transformation step 4
+# transformation step #5
 def transformIRSchDataAndPush():
     # for each interregional path find, isgs, lta, mtoa, stoa, pxil, iexl, total ir schedules
     try:
@@ -884,7 +917,7 @@ def fetchDBIRElinesExportImportMUDict():
         conn.close()
         return (lineImpDict, lineExpDict)
 
-# transformation step 5
+# transformation step #6
 def transformIRScadaDataAndPush():
     # for interregional_lines find max_export, max_export_hrs, max_import, max_import_hrs, export_mu, import_mu
     try:
@@ -976,6 +1009,60 @@ def convert_blk_to_time_strs(blk):
     startMins = (blk-1)*15
     endMins = blk*15
     return [convert_min_to_time_str(startMins), convert_min_to_time_str(endMins)]
+
+def getAllKeyValsExceptConfig():
+    try:
+        conn = getConn()
+        cur = conn.cursor()
+        cur.execute("""SELECT entity, val_key, val from key_vals where entity<>'config' order by entity asc""")
+        rows = cur.fetchall()
+        conn.commit()
+        cur.close()
+        conn.close()
+        return rows
+    except psycopg2.DatabaseError as e:
+        print e
+    finally:
+        conn.close()
+    
+def push_report_vals_to_db(wb, sheet_name):
+    try:
+        conn = getConn()
+        cur = conn.cursor()
+        tuples = []
+        valsArr= wb.sheets[sheet_name].range('A1').options(expand='table').value
+        for valRow in valsArr:
+            #stub
+            [entity, val_key] = valRow[0].split('|')
+            val = "" if valRow[1] == None else valRow[1]
+            tuples.append(dict(val_key=val_key, entity=entity, val=val))
+        # push all the tuples to db
+        tuples_write = """
+            insert into key_vals (
+                val_key,
+                entity,
+                val
+            ) values %s on conflict(val_key, entity) do update set val = EXCLUDED.val
+        """
+        # push tuples to db
+        execute_values (
+            cur,
+            tuples_write,
+            tuples,
+            template = """(
+                %(val_key)s,
+                %(entity)s,
+                %(val)s
+            )""",
+            page_size = 1000
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except psycopg2.DatabaseError as e:
+        print e
+    finally:
+        conn.close()
 '''
 # Insert a row
 conn = getConn()

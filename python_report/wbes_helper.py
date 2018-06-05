@@ -121,7 +121,7 @@ def get_isgs_inj_df(baseURLStr, latestRev, dateObj):
     return pd.DataFrame()
 
 def get_isgs_dc_df(baseURLStr, latestRev, dateObj):
-    fetchURL = '{0}/wbes/Report/ExportDeclarationRldcToPDF?scheduleDate={1:%d-%m-%Y}&getTokenValue=1525510061921&fileType=csv&Region=2&UtilId=ALL&Revision={2}&isBuyer=0&byOnBar=0'.format(baseURLStr, dateObj, latestRev)
+    fetchURL = '{0}/wbes/Report/ExportDeclarationRldcToPDF?scheduleDate={1:%d-%m-%Y}&getTokenValue=1525510061921&fileType=csv&Region=2&UtilId=ALL&Revision={2}&isBuyer=0&byOnBar=0&byDCSchd=0'.format(baseURLStr, dateObj, latestRev)
     # fetch state net sch
     r = requests.get(fetchURL, headers=ids_helper.get_default_request_headers())
     # check if we get a 200 ok response
@@ -238,7 +238,7 @@ def get_sch_mu_mul_col(wb, nameStrs):
 
 # east west link schedule - http://103.7.130.121/wbes/Report/ExportFlowGateScheduleToPDF?scheduleDate=04-05-2018&getTokenValue=1525510061921&fileType=csv&revisionNumber=72&pathId=39&scheduleType=0&isLink=1
 
-# x =  revs_helper.latestRevForDate("http://103.7.130.121", datetime.datetime.now())
+# x =  revs_helper.latestRevForDate("http://scheduling.wrldc.in", datetime.datetime.now())
 
 # x = get_state_csv_url('cseb', "http://103.7.130.121", datetime.datetime.now())
 
