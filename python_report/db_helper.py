@@ -363,7 +363,8 @@ def transformStateDataAndPush():
         offPeakDemDict = {}
         peakShortageDict = {}
         offPeakShortageDict = {}
-        # for ech constituent, find the max_demand_met, max_demand_met_hrs, shortage_at_max_demand_met, max_requirement, max_requirement_hrs, shortage_at_max_requirement, peak_demand_met, peak_shortage, off_peak_demand_met, off_peak_shortage
+        shortfallMUDict = {}
+        # for ech constituent, find the max_demand_met, max_demand_met_hrs, shortage_at_max_demand_met, max_requirement, max_requirement_hrs, demand_met_at_max_requirement, shortage_at_max_requirement, peak_demand_met, peak_shortage, off_peak_demand_met, off_peak_shortage
         # find 24 hr demand values for each consituent
         for cons in const_list:
             cur.execute("""SELECT hour_num, val from hour_vals where entity = %s and val_type = %s""", (cons, 'demand'))
@@ -401,6 +402,7 @@ def transformStateDataAndPush():
             offPeakDem = demandVals[2]
             peakShortage = lsVals[peak_hr - 1]
             offpeakShortage = lsVals[2]
+            shortage_mu = sum(lsVals)/1000
             # store all the values into the dictionary
             maxDemMetDict[cons] = maxDemMet
             maxDemMetHrsDict[cons] = maxDemMetHrs
@@ -412,6 +414,7 @@ def transformStateDataAndPush():
             offPeakDemDict[cons]  = offPeakDem
             peakShortageDict[cons]  = peakShortage
             offPeakShortageDict[cons]  = offpeakShortage
+            shortfallMUDict[cons] = shortage_mu
             
         # find WR max_demand_met, max_demand_met_hrs, shortage_at_max_demand_met, max_requirement, max_requirement_hrs, shortage_at_max_requirement
         wrHourlyDem = [sum(x) for x in zip(*hourlyDemandsDict.values())]
@@ -444,6 +447,7 @@ def transformStateDataAndPush():
             tuples.append(dict(val_key='peak_shortfall_mw', entity=cons, val=peakShortageDict[cons]))
             tuples.append(dict(val_key='3hrs_demand_mw', entity=cons, val=offPeakDemDict[cons]))
             tuples.append(dict(val_key='3hrs_shortfall_mw', entity=cons, val=offPeakShortageDict[cons]))
+            tuples.append(dict(val_key='shortfall_mu', entity=cons, val=shortfallMUDict[cons]))
         # add wr values to tuples
         tuples.append(dict(val_key='max_demand_met_mw', entity='wr', val=wrMaxDem))
         tuples.append(dict(val_key='max_demand_met_hrs', entity='wr', val=wrMaxDemHrs+1))
