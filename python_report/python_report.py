@@ -85,6 +85,12 @@ def push_modified_report_data():
     db_helper.push_report_vals_to_db(wb, sheet_name)
 
 @xw.func
+def push_line_details_to_db():
+    wb = xw.Book.caller()
+    sheet_name = 'LINE_MAPPINGS'
+    db_helper.pushLineDataToDB(wb, sheet_name)
+    
+@xw.func
 @xw.arg('baseURLStr', doc='Base URL')
 @xw.arg('dateObj', doc='Date String')
 def latestRevForDate(baseURLStr, dateObj):

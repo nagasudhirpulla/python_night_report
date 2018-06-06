@@ -336,7 +336,7 @@ def transformRawData():
     transformGenRawStateGenDataAndPush()
     transformStateSchDataAndPush()
     transformIRSchDataAndPush()
-    transformIRScadaDataAndPush()
+    transformIRLinesScadaDataAndPush()
 
 # transformation step #1
 def transformStateDataAndPush():
@@ -498,33 +498,34 @@ def transformVoltDataAndPush():
         tuples = []
         for voltNode in voltStationsList:
             # todo handle if station not present in voltLevelInfoDict
-            nodeDict = dict(volt=float(voltLevelInfoDict[voltNode]), max=0, min=0, min_time='00:00', max_time='00:00', band1_perc=0, band2_perc=0, band3_perc=0, band4_perc=0)
+            nodeDict = dict(volt=float(voltLevelInfoDict[voltNode]), max=0, min=0, min_time='00:00', avg=0, max_time='00:00', band1_perc=0, band2_perc=0, band3_perc=0, band4_perc=0)
             voltInfoDict[voltNode] = nodeDict
             # get the 1440 min values
             cur.execute("""SELECT val from minute_vals where val_type='volt' and entity=%s order by min_num asc""", (voltNode,))
             rows = cur.fetchall()
             voltageVals = []
-            if(len(rows) != 1440):
-                continue
-            for row in rows:
-                voltageVals.append(row[0])
-            nodeDict['max'] = max(voltageVals)
-            nodeDict['min'] = min(voltageVals)
-            nodeDict['max_time'] = convert_min_to_time_str(voltageVals.index(nodeDict['max']))
-            nodeDict['min_time'] = convert_min_to_time_str(voltageVals.index(nodeDict['min']))
-            min1 = 380 if nodeDict['volt'] == 400 else 720
-            min2 = 390 if nodeDict['volt'] == 400 else 750
-            max1 = 420 if nodeDict['volt'] == 400 else 780
-            max2 = 430 if nodeDict['volt'] == 400 else 800
-            nodeDict['band1_perc'] = sum([1 for x in voltageVals if x<min1])/14.4
-            nodeDict['band2_perc'] = sum([1 for x in voltageVals if x<min2])/14.4
-            nodeDict['band3_perc'] = sum([1 for x in voltageVals if x>max1])/14.4
-            nodeDict['band4_perc'] = sum([1 for x in voltageVals if x>max2])/14.4
+            if(len(rows) == 1440):
+                for row in rows:
+                    voltageVals.append(row[0])
+                nodeDict['max'] = max(voltageVals)
+                nodeDict['min'] = min(voltageVals)
+                nodeDict['avg'] = sum(voltageVals)/1440
+                nodeDict['max_time'] = convert_min_to_time_str(voltageVals.index(nodeDict['max']))
+                nodeDict['min_time'] = convert_min_to_time_str(voltageVals.index(nodeDict['min']))
+                min1 = 380 if nodeDict['volt'] == 400 else 720
+                min2 = 390 if nodeDict['volt'] == 400 else 750
+                max1 = 420 if nodeDict['volt'] == 400 else 780
+                max2 = 430 if nodeDict['volt'] == 400 else 800
+                nodeDict['band1_perc'] = sum([1 for x in voltageVals if x<min1])/14.4
+                nodeDict['band2_perc'] = sum([1 for x in voltageVals if x<min2])/14.4
+                nodeDict['band3_perc'] = sum([1 for x in voltageVals if x>max1])/14.4
+                nodeDict['band4_perc'] = sum([1 for x in voltageVals if x>max2])/14.4
             voltInfoDict[voltNode] = nodeDict
             tuples.append(dict(val_key='max_volt', entity=voltNode, val=nodeDict['max']))
             tuples.append(dict(val_key='min_volt', entity=voltNode, val=nodeDict['min']))
             tuples.append(dict(val_key='max_volt_time', entity=voltNode, val=nodeDict['max_time']))
             tuples.append(dict(val_key='min_volt_time', entity=voltNode, val=nodeDict['min_time']))
+            tuples.append(dict(val_key='avg_volt', entity=voltNode, val=nodeDict['avg']))
             tuples.append(dict(val_key='band1_volt_perc', entity=voltNode, val=nodeDict['band1_perc']))
             tuples.append(dict(val_key='band2_volt_perc', entity=voltNode, val=nodeDict['band2_perc']))
             tuples.append(dict(val_key='band3_volt_perc', entity=voltNode, val=nodeDict['band3_perc']))
@@ -566,7 +567,7 @@ def transformGenRawStateGenDataAndPush():
         rows = cur.fetchall()
         peak_blk_Ind = int(float(rows[0][0]))*4
         # get the list of generators for state gen info
-        cur.execute("""SELECT DISTINCT entity from minute_vals where val_type in ('state_gen', 'gen_raw')""")
+        cur.execute("""SELECT DISTINCT entity from minute_vals where val_type in ('state_gen', 'gen_raw', 'state_raw') order by entity asc""")
         rows = cur.fetchall()
         stateGenList = []
         for row in rows:
@@ -574,26 +575,25 @@ def transformGenRawStateGenDataAndPush():
         stateGenDict = {}
         tuples = []
         # for state_gen find peak_mw, off_peak_mw, max_mw, max_mw_hrs, avg_mw
-        for stateGen in stateGenList:
+        for stateGenCounter, stateGen in enumerate(stateGenList):
             genDict = dict(peak_blk_mw=0, off_peak_blk_mw=0, max_blk_mw=0, max_blk_mw_time=0, avg_mw=0)
             stateGenDict[stateGen] = genDict
             # get the minute values of the generator            
-            cur.execute("""SELECT val from minute_vals where val_type in ('state_gen', 'gen_raw') and entity=%s order by min_num asc""", (stateGen,))
+            cur.execute("""SELECT val from minute_vals where val_type IN ('gen_raw', 'state_gen', 'state_raw') and entity=%s order by min_num asc""", (stateGen, ))
             rows = cur.fetchall()
-            if(len(rows) != 1440):
-                continue
-            minVals = []
-            for row in rows:
-                minVals.append(row[0])
-            # convert minVals into blkVals
-            blkVals = []
-            for blkInd in range(96):
-                blkVals.append(sum(minVals[(blkInd*15):((blkInd+1)*15)])/15)
-            genDict['peak_blk_mw'] = blkVals[peak_blk_Ind]
-            genDict['off_peak_blk_mw'] = blkVals[2]
-            genDict['max_blk_mw'] = max(blkVals)
-            genDict['max_blk_mw_time'] = '-'.join(convert_blk_to_time_strs(blkVals.index(genDict['max_blk_mw'])+1))
-            genDict['avg_mw'] = sum(blkVals)/96
+            if(len(rows) == 1440):
+                minVals = []
+                for row in rows:
+                    minVals.append(row[0])
+                # convert minVals into blkVals
+                blkVals = []
+                for blkInd in range(96):
+                    blkVals.append(sum(minVals[(blkInd*15):((blkInd+1)*15)])/15)
+                genDict['peak_blk_mw'] = blkVals[peak_blk_Ind]
+                genDict['off_peak_blk_mw'] = blkVals[2]
+                genDict['max_blk_mw'] = max(blkVals)
+                genDict['max_blk_mw_time'] = '-'.join(convert_blk_to_time_strs(blkVals.index(genDict['max_blk_mw'])+1))
+                genDict['avg_mw'] = sum(blkVals)/96
             for keyStr in genDict.keys():
                 tuples.append(dict(val_key=keyStr, entity=stateGen, val=genDict[keyStr]))
             stateGenDict[stateGen] = genDict
@@ -678,7 +678,7 @@ def transformStateSchDataAndPush():
             schDict['min_iex_mw'] = min(iexVals)
             pxVals = []
             # get px vals
-            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('IEX', cons))
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", ('PXI', cons))
             rows = cur.fetchall()
             if(len(rows) != 96):
                 continue
@@ -921,7 +921,7 @@ def fetchDBIRElinesExportImportMUDict():
         conn.close()
         return (lineImpDict, lineExpDict)
 
-# transformation step #6
+# not required
 def transformIRScadaDataAndPush():
     # for interregional_lines find max_export, max_export_hrs, max_import, max_import_hrs, export_mu, import_mu
     try:
@@ -1003,6 +1003,111 @@ def transformIRScadaDataAndPush():
         print e
     finally:
         conn.close()
+
+# transformation step #6
+def transformIRLinesScadaDataAndPush():
+    # stub for interregional_lines find max_export, max_export_hrs, max_import, max_import_hrs, export_mu, import_mu, peak_flow_mw, off_peak_flow_mw
+    try:
+        # get export import mu values from ire manual data of db
+        IRElineImpDict, IRElineExpDict = fetchDBIRElinesExportImportMUDict()
+        conn = getConn()
+        cur = conn.cursor()
+        # find the peak hour
+        cur.execute("""SELECT val from key_vals where val_key = %s AND entity = %s""", ('peak_hrs', 'config'))
+        rows = cur.fetchall()
+        peak_hr = int(float(rows[0][0]))
+        peak_min = peak_hr*60
+        off_peak_min = 180
+        tuples = []
+        # get the list of interregional lines for ir flow info
+        lineNamesList = []
+        lineDetailsDict = {}
+        cur.execute("""SELECT line_name, ckt_names, region from line_details""")
+        rows = cur.fetchall()
+        for row in rows:
+            lineNamesList.append(row[0])
+            lineDetailsDict[row[0]] = dict(ckt_names=row[1], region=row[2])
+        lineFlowDict = {}
+        for lineCounter, lineName in enumerate(lineNamesList):
+            lineSummaryDict = dict(peak_flow_mw=0, off_peak_flow_mw=0, max_export=0, max_export_hrs='00:00', export_mu=0, max_import=0, max_import_hrs='00:00', import_mu=0)
+            lineFlowDict[lineName] = lineSummaryDict
+            minVals = [0 for x in range(1440)]
+            cktNames = lineDetailsDict[lineName]['ckt_names'].split('|')
+            import_mu = 0.0
+            export_mu = 0.0
+            for cktName in cktNames:
+                cktMinVals = [0 for x in range(1440)]
+                # get the minute values of the line flow            
+                cur.execute("""SELECT val from minute_vals where val_type = 'inter_regional' and entity=%s order by min_num asc""", (cktName,))
+                rows = cur.fetchall()
+                if(len(rows) != 1440):
+                    continue            
+                for k in range(len(rows)):
+                    minVals[k] = minVals[k] -1*rows[k][0]
+                    cktMinVals[k] = -1*rows[k][0]
+                # check if the ckt has already import mu defined in manual
+                if (cktName in IRElineImpDict) and IRElineImpDict[cktName] != '':
+                    import_mu = import_mu + float(IRElineImpDict[cktName])
+                else:
+                    # calculate import mu values from cktMinVals
+                    cktImportVals = [(lambda x: (0 if x<0 else x))(x) for x in cktMinVals]
+                    import_mu = import_mu + sum(cktImportVals)/60000                    
+                # check if the ckt has already export mu defined in manual
+                if (cktName in IRElineExpDict) and IRElineExpDict[cktName] != '':
+                    export_mu = export_mu + float(IRElineExpDict[cktName])
+                else:
+                    # calculate export mu values from cktMinVals
+                    cktExportVals = [(lambda x: (0 if x>0 else x))(x) for x in cktMinVals]
+                    export_mu = export_mu + sum(cktExportVals)/60000                    
+            lineSummaryDict['export_mu'] = export_mu
+            lineSummaryDict['import_mu'] = import_mu
+            # find the max_export (+ve values) and make save the result as negative
+            exportVals = [(lambda x: (0 if x>0 else x))(x) for x in minVals]
+            max_export = min(exportVals)
+            # export_mu = sum(exportVals)/60000
+            max_export_hrs = convert_min_to_time_str(exportVals.index(max_export))
+            importVals = [(lambda x: (0 if x<0 else x))(x) for x in minVals]
+            max_import = max(importVals)
+            # import_mu = sum(importVals)/60000
+            max_import_hrs = convert_min_to_time_str(importVals.index(max_import))
+            lineSummaryDict['max_export'] = max_export
+            
+            lineSummaryDict['max_export_hrs'] = max_export_hrs
+            lineSummaryDict['max_import'] = max_import
+            lineSummaryDict['max_import_hrs'] = max_import_hrs
+            lineSummaryDict['peak_flow_mw'] = minVals[peak_min]
+            lineSummaryDict['off_peak_flow_mw'] = minVals[off_peak_min]
+            # push the path summary values to the tuples
+            for keyStr in lineSummaryDict.keys():
+                tuples.append(dict(val_key=keyStr, entity=lineName, val=lineSummaryDict[keyStr]))
+            lineFlowDict[lineName] = lineSummaryDict
+        # push all the tuples to db
+        tuples_write = """
+            insert into key_vals (
+                val_key,
+                entity,
+                val
+            ) values %s on conflict(val_key, entity) do update set val = EXCLUDED.val
+        """
+        # push tuples to db
+        execute_values (
+            cur,
+            tuples_write,
+            tuples,
+            template = """(
+                %(val_key)s,
+                %(entity)s,
+                %(val)s
+            )""",
+            page_size = 1000
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except psycopg2.DatabaseError as e:
+        print e
+    finally:
+        conn.close()
             
 def convert_min_to_time_str(minReq):
     hrs = math.floor(minReq/60)
@@ -1040,7 +1145,6 @@ def push_report_vals_to_db(wb, sheet_name):
             [entity, val_key] = valRow[0].split('|')
             val = "" if valRow[1] == None else valRow[1]
             tuples.append(dict(val_key=val_key, entity=entity, val=val))
-        # push all the tuples to db
         tuples_write = """
             insert into key_vals (
                 val_key,
@@ -1067,6 +1171,49 @@ def push_report_vals_to_db(wb, sheet_name):
         print e
     finally:
         conn.close()
+
+def pushLineDataToDB(wb, sheet_name):
+    try:
+        conn = getConn()
+        cur = conn.cursor()
+        tuples = []
+        valsArr= wb.sheets[sheet_name].range('A1').options(expand='table').value
+        for valRow in valsArr:
+            line_name = valRow[0]
+            ckt_names = valRow[1]
+            region = valRow[2]
+            if line_name != None:
+                ckt_names = "" if ckt_names == None else ckt_names
+                region = "" if region == None else region
+                tuples.append(dict(line_name=line_name, ckt_names=ckt_names, region=region))
+        # push all the tuples to db
+        tuples_write = """
+            insert into line_details (
+                line_name,
+                ckt_names,
+                region
+            ) values %s on conflict(line_name) do update set ckt_names = EXCLUDED.ckt_names, region = EXCLUDED.region
+        """
+        # push tuples to db
+        execute_values (
+            cur,
+            tuples_write,
+            tuples,
+            template = """(
+                %(line_name)s,
+                %(ckt_names)s,
+                %(region)s
+            )""",
+            page_size = 1000
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except psycopg2.DatabaseError as e:
+        print e
+    finally:
+        conn.close()
+
 '''
 # Insert a row
 conn = getConn()
