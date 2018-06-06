@@ -337,6 +337,7 @@ def transformRawData():
     transformStateSchDataAndPush()
     transformIRSchDataAndPush()
     transformIRLinesScadaDataAndPush()
+    transformGenDCSchDataAndPush()
 
 # transformation step #1
 def transformStateDataAndPush():
@@ -1109,6 +1110,91 @@ def transformIRLinesScadaDataAndPush():
     finally:
         conn.close()
             
+# transformation step #7
+def transformGenDCSchDataAndPush():
+    # for each wbes gen calculate wbes_peak_hr_mw, wbes_sch_mu, wbes_sch_peak_hr_mw, wbes_sch_mu
+    try:
+        conn = getConn()
+        cur = conn.cursor()
+        # find the peak hour
+        cur.execute("""SELECT val from key_vals where val_key = %s AND entity = %s""", ('peak_hrs', 'config'))
+        rows = cur.fetchall()
+        peak_blk_Ind = int(float(rows[0][0]))*4
+        # get the list of generators for dc info
+        cur.execute("""SELECT distinct sch_type from blk_vals where entity = 'dc'""")
+        rows = cur.fetchall()
+        dcGenList = []
+        for row in rows:
+            dcGenList.append(row[0])
+        dcGenSchDict = {}
+        tuples = []
+        for gen in dcGenList:
+            dcSchDict = dict(wbes_dc_peak_hr_mw=0, wbes_dc_mu=0)
+            dcGenSchDict[gen] = dcSchDict
+            dcSchVals = []
+            # get stoa vals
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", (gen, 'dc'))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for row in rows:
+                dcSchVals.append(row[0])
+            dcSchDict['wbes_dc_peak_hr_mw'] = dcSchVals[peak_blk_Ind]
+            dcSchDict['wbes_dc_mu'] = sum(dcSchVals)/4000
+            for keyStr in dcSchDict.keys():
+                tuples.append(dict(val_key=keyStr, entity=gen, val=dcSchDict[keyStr]))
+            dcGenSchDict[gen] = dcSchDict
+        
+        # get the list of generators for inj_sch info
+        cur.execute("""SELECT distinct sch_type from blk_vals where entity = 'inj_sch'""")
+        rows = cur.fetchall()
+        InjSchGenList = []
+        for row in rows:
+            InjSchGenList.append(row[0])
+        InjSchGenDict = {}
+        for gen in InjSchGenList:
+            InjSchDict = dict(wbes_sch_peak_hr_mw=0, wbes_sch_mu=0)
+            InjSchGenDict[gen] = InjSchDict
+            schVals = []
+            # get stoa vals
+            cur.execute("""SELECT val from blk_vals where sch_type = %s AND entity = %s order by blk asc""", (gen, 'inj_sch'))
+            rows = cur.fetchall()
+            if(len(rows) != 96):
+                continue
+            for row in rows:
+                schVals.append(row[0])
+            InjSchDict['wbes_sch_peak_hr_mw'] = schVals[peak_blk_Ind]
+            InjSchDict['wbes_sch_mu'] = sum(schVals)/4000
+            for keyStr in InjSchDict.keys():
+                tuples.append(dict(val_key=keyStr, entity=gen, val=InjSchDict[keyStr]))
+            InjSchGenDict[gen] = InjSchDict
+        tuples_write = """
+            insert into key_vals (
+                val_key,
+                entity,
+                val
+            ) values %s on conflict(val_key, entity) do update set val = EXCLUDED.val
+        """
+        # push tuples to db
+        execute_values (
+            cur,
+            tuples_write,
+            tuples,
+            template = """(
+                %(val_key)s,
+                %(entity)s,
+                %(val)s
+            )""",
+            page_size = 1000
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except psycopg2.DatabaseError as e:
+        print e
+    finally:
+        conn.close()
+
 def convert_min_to_time_str(minReq):
     hrs = math.floor(minReq/60)
     mins = minReq - hrs*60
