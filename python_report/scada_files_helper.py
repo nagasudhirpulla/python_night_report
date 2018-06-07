@@ -18,7 +18,10 @@ def get_file_info_df():
     return pd.DataFrame(columns=['volt', 'gen_raw', 'state_raw', 'state_gen', 'inter_regional'], index=['config_key', 'type'], data=[['volt_filename', 'gen_raw_filename', 'state_raw_filename', 'state_gen_filename', 'inter_regional_filename'], ['volt', 'gen_raw', 'state_raw', 'state_gen', 'inter_regional']])
     
 def get_scada_df(filename, fileType):
-    df = pd.read_excel(filename)
+    if(filename.endswith('.csv')):
+        df = pd.read_csv(filename, error_bad_lines=False)
+    else:
+        df = pd.read_excel(filename)
     k = pd.DataFrame(columns=df.columns, data=[[fileType for varr in df.columns]])
     df = k.append(df, ignore_index=True)
     if(fileType in ['volt', 'gen_raw', 'state_raw', 'state_gen']):
