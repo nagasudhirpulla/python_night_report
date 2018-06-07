@@ -5,7 +5,7 @@
 -- Dumped from database version 9.6.3
 -- Dumped by pg_dump version 9.6.3
 
--- Started on 2018-06-05 21:00:55
+-- Started on 2018-06-07 14:59:09
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -16,9 +16,8 @@ SET check_function_bodies = false;
 SET client_min_messages = warning;
 SET row_security = off;
 
-DROP DATABASE night_report_db;
 --
--- TOC entry 2182 (class 1262 OID 16856)
+-- TOC entry 2194 (class 1262 OID 16856)
 -- Name: night_report_db; Type: DATABASE; Schema: -; Owner: postgres
 --
 
@@ -47,7 +46,7 @@ CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
 
 
 --
--- TOC entry 2185 (class 0 OID 0)
+-- TOC entry 2196 (class 0 OID 0)
 -- Dependencies: 1
 -- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: 
 --
@@ -107,7 +106,7 @@ CREATE SEQUENCE constituents_id_seq
 ALTER TABLE constituents_id_seq OWNER TO postgres;
 
 --
--- TOC entry 2186 (class 0 OID 0)
+-- TOC entry 2197 (class 0 OID 0)
 -- Dependencies: 193
 -- Name: constituents_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -147,7 +146,7 @@ CREATE SEQUENCE hour_vals_id_seq
 ALTER TABLE hour_vals_id_seq OWNER TO postgres;
 
 --
--- TOC entry 2187 (class 0 OID 0)
+-- TOC entry 2198 (class 0 OID 0)
 -- Dependencies: 189
 -- Name: hour_vals_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -186,12 +185,51 @@ CREATE SEQUENCE key_vals_id_seq
 ALTER TABLE key_vals_id_seq OWNER TO postgres;
 
 --
--- TOC entry 2188 (class 0 OID 0)
+-- TOC entry 2199 (class 0 OID 0)
 -- Dependencies: 191
 -- Name: key_vals_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
 ALTER SEQUENCE key_vals_id_seq OWNED BY key_vals.id;
+
+
+--
+-- TOC entry 198 (class 1259 OID 25094)
+-- Name: line_details; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE line_details (
+    id integer NOT NULL,
+    line_name character varying(100) NOT NULL,
+    ckt_names character varying(500) NOT NULL,
+    region character varying(50) NOT NULL
+);
+
+
+ALTER TABLE line_details OWNER TO postgres;
+
+--
+-- TOC entry 197 (class 1259 OID 25092)
+-- Name: line_details_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE line_details_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE line_details_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 2200 (class 0 OID 0)
+-- Dependencies: 197
+-- Name: line_details_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE line_details_id_seq OWNED BY line_details.id;
 
 
 --
@@ -226,7 +264,7 @@ CREATE SEQUENCE minute_vals_id_seq
 ALTER TABLE minute_vals_id_seq OWNER TO postgres;
 
 --
--- TOC entry 2189 (class 0 OID 0)
+-- TOC entry 2201 (class 0 OID 0)
 -- Dependencies: 187
 -- Name: minute_vals_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -250,7 +288,7 @@ CREATE SEQUENCE sch_vals_id_seq
 ALTER TABLE sch_vals_id_seq OWNER TO postgres;
 
 --
--- TOC entry 2190 (class 0 OID 0)
+-- TOC entry 2202 (class 0 OID 0)
 -- Dependencies: 185
 -- Name: sch_vals_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -289,7 +327,7 @@ CREATE SEQUENCE volt_level_info_id_seq
 ALTER TABLE volt_level_info_id_seq OWNER TO postgres;
 
 --
--- TOC entry 2191 (class 0 OID 0)
+-- TOC entry 2203 (class 0 OID 0)
 -- Dependencies: 195
 -- Name: volt_level_info_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -298,7 +336,7 @@ ALTER SEQUENCE volt_level_info_id_seq OWNED BY volt_level_info.id;
 
 
 --
--- TOC entry 2031 (class 2604 OID 16862)
+-- TOC entry 2038 (class 2604 OID 16862)
 -- Name: blk_vals id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -306,7 +344,7 @@ ALTER TABLE ONLY blk_vals ALTER COLUMN id SET DEFAULT nextval('sch_vals_id_seq':
 
 
 --
--- TOC entry 2035 (class 2604 OID 17034)
+-- TOC entry 2042 (class 2604 OID 17034)
 -- Name: constituents id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -314,7 +352,7 @@ ALTER TABLE ONLY constituents ALTER COLUMN id SET DEFAULT nextval('constituents_
 
 
 --
--- TOC entry 2033 (class 2604 OID 16885)
+-- TOC entry 2040 (class 2604 OID 16885)
 -- Name: hour_vals id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -322,7 +360,7 @@ ALTER TABLE ONLY hour_vals ALTER COLUMN id SET DEFAULT nextval('hour_vals_id_seq
 
 
 --
--- TOC entry 2034 (class 2604 OID 16895)
+-- TOC entry 2041 (class 2604 OID 16895)
 -- Name: key_vals id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -330,7 +368,15 @@ ALTER TABLE ONLY key_vals ALTER COLUMN id SET DEFAULT nextval('key_vals_id_seq':
 
 
 --
--- TOC entry 2032 (class 2604 OID 16875)
+-- TOC entry 2044 (class 2604 OID 25097)
+-- Name: line_details id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY line_details ALTER COLUMN id SET DEFAULT nextval('line_details_id_seq'::regclass);
+
+
+--
+-- TOC entry 2039 (class 2604 OID 16875)
 -- Name: minute_vals id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -338,7 +384,7 @@ ALTER TABLE ONLY minute_vals ALTER COLUMN id SET DEFAULT nextval('minute_vals_id
 
 
 --
--- TOC entry 2036 (class 2604 OID 17044)
+-- TOC entry 2043 (class 2604 OID 17044)
 -- Name: volt_level_info id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -346,7 +392,7 @@ ALTER TABLE ONLY volt_level_info ALTER COLUMN id SET DEFAULT nextval('volt_level
 
 
 --
--- TOC entry 2054 (class 2606 OID 17036)
+-- TOC entry 2062 (class 2606 OID 17036)
 -- Name: constituents constituents_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -355,7 +401,7 @@ ALTER TABLE ONLY constituents
 
 
 --
--- TOC entry 2046 (class 2606 OID 16887)
+-- TOC entry 2054 (class 2606 OID 16887)
 -- Name: hour_vals hour_vals_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -364,7 +410,7 @@ ALTER TABLE ONLY hour_vals
 
 
 --
--- TOC entry 2050 (class 2606 OID 16897)
+-- TOC entry 2058 (class 2606 OID 16897)
 -- Name: key_vals key_vals_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -373,7 +419,25 @@ ALTER TABLE ONLY key_vals
 
 
 --
--- TOC entry 2042 (class 2606 OID 16877)
+-- TOC entry 2070 (class 2606 OID 25102)
+-- Name: line_details line_details_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY line_details
+    ADD CONSTRAINT line_details_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 2072 (class 2606 OID 25104)
+-- Name: line_details line_name_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY line_details
+    ADD CONSTRAINT line_name_unique UNIQUE (line_name);
+
+
+--
+-- TOC entry 2050 (class 2606 OID 16877)
 -- Name: minute_vals minute_vals_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -382,7 +446,7 @@ ALTER TABLE ONLY minute_vals
 
 
 --
--- TOC entry 2056 (class 2606 OID 17038)
+-- TOC entry 2064 (class 2606 OID 17038)
 -- Name: constituents name_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -391,7 +455,7 @@ ALTER TABLE ONLY constituents
 
 
 --
--- TOC entry 2058 (class 2606 OID 17048)
+-- TOC entry 2066 (class 2606 OID 17048)
 -- Name: volt_level_info scada_id_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -400,7 +464,7 @@ ALTER TABLE ONLY volt_level_info
 
 
 --
--- TOC entry 2038 (class 2606 OID 16866)
+-- TOC entry 2046 (class 2606 OID 16866)
 -- Name: blk_vals sch_type_ent_blk_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -409,7 +473,7 @@ ALTER TABLE ONLY blk_vals
 
 
 --
--- TOC entry 2040 (class 2606 OID 16864)
+-- TOC entry 2048 (class 2606 OID 16864)
 -- Name: blk_vals sch_vals_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -418,7 +482,7 @@ ALTER TABLE ONLY blk_vals
 
 
 --
--- TOC entry 2052 (class 2606 OID 16899)
+-- TOC entry 2060 (class 2606 OID 16899)
 -- Name: key_vals val_key_ent_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -427,7 +491,7 @@ ALTER TABLE ONLY key_vals
 
 
 --
--- TOC entry 2048 (class 2606 OID 16889)
+-- TOC entry 2056 (class 2606 OID 16889)
 -- Name: hour_vals val_type_ent_hour_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -436,7 +500,7 @@ ALTER TABLE ONLY hour_vals
 
 
 --
--- TOC entry 2044 (class 2606 OID 16879)
+-- TOC entry 2052 (class 2606 OID 16879)
 -- Name: minute_vals val_type_ent_min_num_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -445,7 +509,7 @@ ALTER TABLE ONLY minute_vals
 
 
 --
--- TOC entry 2060 (class 2606 OID 17046)
+-- TOC entry 2068 (class 2606 OID 17046)
 -- Name: volt_level_info volt_level_info_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -453,16 +517,7 @@ ALTER TABLE ONLY volt_level_info
     ADD CONSTRAINT volt_level_info_pkey PRIMARY KEY (id);
 
 
---
--- TOC entry 2184 (class 0 OID 0)
--- Dependencies: 6
--- Name: public; Type: ACL; Schema: -; Owner: postgres
---
-
-GRANT ALL ON SCHEMA public TO PUBLIC;
-
-
--- Completed on 2018-06-05 21:00:55
+-- Completed on 2018-06-07 14:59:12
 
 --
 -- PostgreSQL database dump complete
