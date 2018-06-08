@@ -23,11 +23,43 @@ def getConn():
     conn = None
     try:
         conn = psycopg2.connect("dbname='night_report_db' user='postgres' host='localhost' password='123'")
-        #print 'connection done...'        
+        #print('connection done...')
     except:
-        print "I am unable to connect to the database"
+        print("I am unable to connect to the database")
     return conn
 
+def push_constituents_db():
+    try:
+        tuples = []
+        constituents = ['cseb', 'dd', 'dnh', 'esil', 'geb', 'goa', 'mp', 'mseb']
+        for cons in constituents:
+            tuples.append(dict(name=cons, region='wr'))
+        tuples_write = """
+            insert into constituents (
+                name,
+                region
+            ) values %s on conflict(name) DO NOTHING
+        """
+        conn = getConn()
+        cur = conn.cursor()
+        execute_values (
+            cur,
+            tuples_write,
+            tuples,
+            template = """(
+                %(name)s,
+                %(region)s
+            )""",
+            page_size = 1000
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except psycopg2.DatabaseError as e:
+        print(e)
+    finally:
+        conn.close()
+    
 def push_config_to_db(wb):
     try:
         config_df = ids_helper.get_config_df(wb)
@@ -60,23 +92,28 @@ def push_config_to_db(wb):
         cur.close()
         conn.close()
     except psycopg2.DatabaseError as e:
-        print e
+        print(e)
     finally:
         conn.close()
 
 def getDBConfigVal(config_params):
-    conn = getConn()
-    cur = conn.cursor()
-    cur.execute("""SELECT val_key, val from key_vals where val_key IN %s and entity=%s""", (tuple(config_params), 'config'))
-    rows = cur.fetchall()
-    conn.commit()
-    cur.close()
-    conn.close()
-    if len(rows) > 0:
-        config_dict = dict((x, y) for x, y in rows)
-        return config_dict
-    else:
-        return None
+    try:
+        conn = getConn()
+        cur = conn.cursor()
+        cur.execute("""SELECT val_key, val from key_vals where val_key IN %s and entity=%s""", (tuple(config_params), 'config'))
+        rows = cur.fetchall()
+        conn.commit()
+        cur.close()
+        conn.close()
+        if len(rows) > 0:
+            config_dict = dict((x, y) for x, y in rows)
+            return config_dict
+        else:
+            return None
+    except psycopg2.DatabaseError as e:
+        print(e)
+    finally:
+        conn.close()
 
 def push_sch_to_db(wb):
     try:
@@ -126,7 +163,7 @@ def push_sch_to_db(wb):
         cur.close()
         conn.close()
     except psycopg2.DatabaseError as e:
-        print e
+        print(e)
     finally:
         conn.close()
     
@@ -177,7 +214,7 @@ def push_scada_to_db(wb):
         cur.close()
         conn.close()
     except psycopg2.DatabaseError as e:
-        print e
+        print(e)
     finally:
         conn.close()
     
@@ -225,7 +262,7 @@ def push_hourly_to_db(wb):
         cur.close()
         conn.close()
     except psycopg2.DatabaseError as e:
-        print e
+        print(e)
     finally:
         conn.close()
     
@@ -265,7 +302,7 @@ def push_key_vals_to_db(wb):
         cur.close()
         conn.close()
     except psycopg2.DatabaseError as e:
-        print e
+        print(e)
     finally:
         conn.close()
     
@@ -326,7 +363,7 @@ def push_ire_manual_to_db(wb):
         cur.close()
         conn.close()
     except psycopg2.DatabaseError as e:
-        print e
+        print(e)
     finally:
         conn.close()
 
@@ -473,7 +510,7 @@ def transformStateDataAndPush():
         cur.close()
         conn.close()
     except psycopg2.DatabaseError as e:
-        print e
+        print(e)
     finally:
         conn.close()
 
@@ -554,7 +591,7 @@ def transformVoltDataAndPush():
         cur.close()
         conn.close()
     except psycopg2.DatabaseError as e:
-        print e
+        print(e)
     finally:
         conn.close()
 
@@ -621,7 +658,7 @@ def transformGenRawStateGenDataAndPush():
         cur.close()
         conn.close()
     except psycopg2.DatabaseError as e:
-        print e
+        print(e)
     finally:
         conn.close()
 
@@ -748,7 +785,7 @@ def transformStateSchDataAndPush():
         cur.close()
         conn.close()
     except psycopg2.DatabaseError as e:
-        print e
+        print(e)
     finally:
         conn.close()
 
@@ -893,7 +930,7 @@ def transformIRSchDataAndPush():
         cur.close()
         conn.close()
     except psycopg2.DatabaseError as e:
-        print e
+        print(e)
     finally:
         conn.close()
 
@@ -915,7 +952,7 @@ def fetchDBIRElinesExportImportMUDict():
         cur.close()
         conn.close()
     except psycopg2.DatabaseError as e:
-        print e
+        print(e)
         lineExpDict = {}
         lineImpDict = {}
     finally:
@@ -1001,7 +1038,7 @@ def transformIRScadaDataAndPush():
         cur.close()
         conn.close()
     except psycopg2.DatabaseError as e:
-        print e
+        print(e)
     finally:
         conn.close()
 
@@ -1106,7 +1143,7 @@ def transformIRLinesScadaDataAndPush():
         cur.close()
         conn.close()
     except psycopg2.DatabaseError as e:
-        print e
+        print(e)
     finally:
         conn.close()
             
@@ -1191,7 +1228,7 @@ def transformGenDCSchDataAndPush():
         cur.close()
         conn.close()
     except psycopg2.DatabaseError as e:
-        print e
+        print(e)
     finally:
         conn.close()
 
@@ -1216,7 +1253,7 @@ def getAllKeyValsExceptConfig():
         conn.close()
         return rows
     except psycopg2.DatabaseError as e:
-        print e
+        print(e)
     finally:
         conn.close()
     
@@ -1254,7 +1291,7 @@ def push_report_vals_to_db(wb, sheet_name):
         cur.close()
         conn.close()
     except psycopg2.DatabaseError as e:
-        print e
+        print(e)
     finally:
         conn.close()
 
@@ -1296,7 +1333,7 @@ def pushLineDataToDB(wb, sheet_name):
         cur.close()
         conn.close()
     except psycopg2.DatabaseError as e:
-        print e
+        print(e)
     finally:
         conn.close()
 

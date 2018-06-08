@@ -1,10 +1,18 @@
 ## Instruction for enabling python in excel macros
 * Install Anaconda
+* Open Anaconda Prompt as **Administrator**
 * Add conda-forge channel for anaconda ```conda config --add channels conda-forge```
-* Update xlwings using conda-forge. For this open command prompt as Administrator and type ```conda update -c conda-forge xlwings```
+* Update xlwings using conda-forge ```conda update -c conda-forge xlwings```
+* Install postgres library ```conda install -c conda-forge psycopg2```
 * Install xlwings addin ```xlwings addin install```
 * Create a project using the command ```xlwings quickstart project_name```
+* Add the folder path of pythonw.exe and python.exe in system environment variable named **Path**
 
+## Excel settings for enabling python macros
+* In Interpreter input at top left write path for pythonw.exe ```C:\ProgramData\Anaconda2\pythonw.exe```
+* Tick the RunPython: Use UDF Server checkbox in the top right
+* In File->Options->Trust Center->Trust Center Settings->Macro Settings->Tick the ```Trust access to VBA project object model``` checkbox
+* If xlwings addin is not shown on the top ribbon, goto DEVELOPER->ADD-Ins and browse for xlwings.xlam file
 
 ### Links
 * Increase git postbuffer for large file sizes during push or clone - https://stackoverflow.com/questions/6842687/the-remote-end-hung-up-unexpectedly-while-git-cloning/19286776
