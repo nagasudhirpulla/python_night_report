@@ -47,6 +47,10 @@ csvFilenames = [r"\\10.2.100.51\scada\Reports\Interregional\Interregional%s.xlsx
 
 destFileFolder = r'scada_files'
 
+# create folder if not present
+if not os.path.exists(destFileFolder):
+    os.makedirs(destFileFolder)
+
 for iter, csvFilename in enumerate(csvFilenames):
     filename = path_leaf(csvFilename)
     if '.csv' in filename:
