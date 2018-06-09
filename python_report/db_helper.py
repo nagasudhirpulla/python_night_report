@@ -368,13 +368,13 @@ def push_ire_manual_to_db(wb):
         conn.close()
 
 def transformRawData():
-    transformStateDataAndPush()
-    transformVoltDataAndPush()
-    transformGenRawStateGenDataAndPush()
     transformStateSchDataAndPush()
-    transformIRSchDataAndPush()
-    transformIRLinesScadaDataAndPush()
     transformGenDCSchDataAndPush()
+    transformIRSchDataAndPush()
+    transformVoltDataAndPush()
+    transformGenRawStateGenDataAndPush()   
+    transformIRLinesScadaDataAndPush()
+    transformStateDataAndPush()
 
 # transformation step #1
 def transformStateDataAndPush():
