@@ -7,7 +7,6 @@ Created on Fri Jun 08 22:59:13 2018
 https://stackoverflow.com/questions/2625877/how-to-copy-files-to-network-path-or-drive-using-python
 https://stackoverflow.com/questions/4571244/creating-a-bat-file-for-python-script
 """
-
 import os
 import csv
 import xlsxwriter
