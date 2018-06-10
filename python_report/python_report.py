@@ -42,6 +42,11 @@ def push_config_to_db():
 @xw.func
 def push_constituents_db():
     db_helper.push_constituents_db()
+
+@xw.func
+def push_volt_config_to_db():
+    wb = xw.Book.caller()
+    db_helper.push_volt_config_to_db(wb)
     
 @xw.func
 def push_sch_to_db():

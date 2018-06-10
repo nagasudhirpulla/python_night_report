@@ -10,6 +10,7 @@ Created on Thu May 17 22:26:46 2018
 # Insert multiple rows https://stackoverflow.com/questions/46373804/using-unnest-with-psycopg2
 # Update values on conflict during insert https://dba.stackexchange.com/questions/167591/postgresql-psycopg2-upsert-syntax-to-update-columns
 
+from db_connector import getConn
 import psycopg2
 import ids_helper
 import math
@@ -18,15 +19,7 @@ try:
 except ImportError: # will be 3.x series
     pass
 from psycopg2.extras import execute_values
-
-def getConn():
-    conn = None
-    try:
-        conn = psycopg2.connect("dbname='night_report_db' user='postgres' host='localhost' password='123'")
-        #print('connection done...')
-    except:
-        print("I am unable to connect to the database")
-    return conn
+from log_helper import create_log_in_db
 
 def push_constituents_db():
     try:
@@ -59,7 +52,53 @@ def push_constituents_db():
         print(e)
     finally:
         conn.close()
-    
+
+def push_volt_config_to_db(wb):
+    try:
+        sheet_name = 'volt_info'
+        conn = getConn()
+        cur = conn.cursor()
+        tuples = []
+        valsArr= wb.sheets[sheet_name].range('A2').options(expand='table').value
+        for rowIter, valRow in enumerate(valsArr):
+            scada_volt_name = valRow[0]
+            if(scada_volt_name == None or scada_volt_name == ""):
+                create_log_in_db('integrity', 'found an empty scada volt name')
+                continue
+            other_name = "" if valRow[1] == None else valRow[1]
+            volt_level = valRow[2]
+            if((type(volt_level) != float and type(volt_level) != int)):
+                create_log_in_db('integrity', 'found a non numeric scada volt level at row number %s'%(rowIter+2))
+                continue            
+            tuples.append(dict(scada_id=scada_volt_name, other_name=other_name, volt=volt_level))
+        tuples_write = """
+            insert into volt_level_info (
+                scada_id,
+                other_name,
+                volt
+            ) values %s on conflict(scada_id) do update set volt = EXCLUDED.volt, other_name = EXCLUDED.other_name
+        """
+        # push tuples to db
+        execute_values (
+            cur,
+            tuples_write,
+            tuples,
+            template = """(
+                %(scada_id)s,
+                %(other_name)s,
+                %(volt)s
+            )""",
+            page_size = 1000
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except psycopg2.DatabaseError as e:
+        print(e)
+    finally:
+        conn.close()
+
+
 def push_config_to_db(wb):
     try:
         config_df = ids_helper.get_config_df(wb)
@@ -145,6 +184,11 @@ def push_sch_to_db(wb):
             for blk in range(1,97):
                 rowInd = blk - 1
                 val = valsArr[rowInd][entityIndex]
+                # make val zero if non numeric and log
+                if((type(val) != float and type(val) != int)):
+                    val = 0
+                    create_log_in_db('integrity', 'Schedule Non numeric at block %s of %s %s'%(blk, schType, entity))
+                    continue            
                 tuples.append(dict(sch_type=schType, entity=entity, blk=blk, val = val))        
             
             execute_values (
@@ -196,6 +240,11 @@ def push_scada_to_db(wb):
             for min_num in range(1,1441):
                 rowInd = min_num - 1
                 val = valsArr[rowInd][entityIndex]
+                # make val zero if non numeric and log
+                if((type(val) != float and type(val) != int)):
+                    val = 0
+                    create_log_in_db('integrity', 'SCADA Non numeric at minute %s of %s %s'%(min_num, valType, entity))
+                    continue            
                 tuples.append(dict(val_type=valType, entity=entity, min_num=min_num, val = val))        
             
             execute_values (
@@ -234,6 +283,7 @@ def push_hourly_to_db(wb):
         valsArr= wb.sheets[sheetName].range('A3').options(expand='table').value
         conn = getConn()
         # cur = conn.cursor()
+        # todo handle non numeric data and log to console db
         tuples = []
         for entityIndex in range(len(entitiesList)):
             entity = entitiesList[entityIndex]
@@ -244,6 +294,11 @@ def push_hourly_to_db(wb):
             for hour_num in range(1,25):
                 rowInd = hour_num - 1
                 val = valsArr[rowInd][entityIndex]
+                # make val zero if non numeric and log
+                if((type(val) != float and type(val) != int)):
+                    val = 0
+                    create_log_in_db('integrity', 'Hourly Non numeric at hour %s of %s %s'%(hour_num, valType, entity))
+                    continue            
                 tuples.append(dict(val_type=valType, entity=entity, hour_num=hour_num, val = val))        
             
             execute_values (
@@ -1264,7 +1319,6 @@ def push_report_vals_to_db(wb, sheet_name):
         tuples = []
         valsArr= wb.sheets[sheet_name].range('A1').options(expand='table').value
         for valRow in valsArr:
-            #stub
             [entity, val_key] = valRow[0].split('|')
             val = "" if valRow[1] == None else valRow[1]
             tuples.append(dict(val_key=val_key, entity=entity, val=val))

@@ -10,6 +10,8 @@ import datetime
 import json
 import revs_helper
 import ids_helper
+import db_helper as db
+import psycopg2
 
 
 
@@ -28,6 +30,9 @@ def get_state_csv_urls(baseURLStr, dateObj):
         urlsObj[stateStr] = fetchURL
     return urlsObj
 
+# valsArr= wb.sheets['VOLT_INFO'].range('A1').options(expand='table').value
+
+# wb = xw.Book(r'python_report.xlsm')
 
 # x =  revs_helper.latestRevForDate("http://103.7.130.121", datetime.datetime.now())
 
