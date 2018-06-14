@@ -8,6 +8,7 @@ import state_files_helper
 import ids_helper
 import db_helper
 import re
+import log_helper
 import numpy as np
 
 try:
@@ -453,6 +454,21 @@ def l1_freq(keyStr):
     headingCell = config_df.loc['freq_data_cell']['value']
     sheetName = 'LEVEL1_VALUES'
     return state_files_helper.get_table_val(wb, sheetName, headingCell, "value", keyStr)
+
+@xw.func
+@xw.arg('from_time', doc='from_time')
+@xw.arg('to_time', doc='to_time')
+def get_logs_between(from_time, to_time):
+    wb = xw.Book.caller()
+    sheetName = 'LOGS'
+    logs_array = log_helper.fetchLogsBetweenTimes(from_time, to_time)
+    wb.sheets[sheetName].range("A1").value = logs_array
+    
+@xw.func
+@xw.arg('from_time', doc='from_time')
+@xw.arg('to_time', doc='to_time')
+def delete_logs_between(from_time, to_time):
+    log_helper.deleteLogsBetweenTimes(from_time, to_time)
     
 # wb = xw.Book(r'C:/Users/Nagasudhir/Documents/Python Projects/Python Excel Reporting/python_report/python_report.xlsm')
 

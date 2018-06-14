@@ -43,7 +43,7 @@ def create_log_in_db(log_priority, log_message):
         conn.close()
         
 def fetchLogsBetweenTimes(from_time, to_time):
-    from_time = dt.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) if from_time == None else from_time
+    from_time = dt.datetime.now().replace(hour=0, minute=0, second=0) if from_time == None else from_time
     to_time = from_time + dt.timedelta(days=1) if to_time == None else to_time
     try:
         conn = getConn()
@@ -54,10 +54,26 @@ def fetchLogsBetweenTimes(from_time, to_time):
         cur.close()
         conn.close()
         if len(rows) > 0:
+            rows = [[row[0].replace(microsecond=0)] + list(row[1:]) for row in rows]
             return rows
         else:
             return []
     except psycopg2.DatabaseError as e:
         print(e)
     finally:
-        conn.close()    
+        conn.close()
+        
+def deleteLogsBetweenTimes(from_time, to_time):
+    from_time = dt.datetime.now().replace(hour=0, minute=0, second=0) if from_time == None else from_time
+    to_time = from_time + dt.timedelta(days=1) if to_time == None else to_time
+    try:
+        conn = getConn()
+        cur = conn.cursor()
+        cur.execute("""delete from log_messages where log_time >= %s and log_time < %s""", (from_time, to_time))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except psycopg2.DatabaseError as e:
+        print(e)
+    finally:
+        conn.close()

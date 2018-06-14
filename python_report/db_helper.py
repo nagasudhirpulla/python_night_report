@@ -63,12 +63,12 @@ def push_volt_config_to_db(wb):
         for rowIter, valRow in enumerate(valsArr):
             scada_volt_name = valRow[0]
             if(scada_volt_name == None or scada_volt_name == ""):
-                create_log_in_db('integrity', 'found an empty scada volt name')
+                create_log_in_db('blank_name_volt', 'found an empty scada volt name')
                 continue
             other_name = "" if valRow[1] == None else valRow[1]
             volt_level = valRow[2]
             if((type(volt_level) != float and type(volt_level) != int)):
-                create_log_in_db('integrity', 'found a non numeric scada volt level at row number %s'%(rowIter+2))
+                create_log_in_db('non_numeric_volt_level', 'found a non numeric scada volt level at row number %s'%(rowIter+2))
                 continue            
             tuples.append(dict(scada_id=scada_volt_name, other_name=other_name, volt=volt_level))
         tuples_write = """
@@ -187,7 +187,7 @@ def push_sch_to_db(wb):
                 # make val zero if non numeric and log
                 if((type(val) != float and type(val) != int)):
                     val = 0
-                    create_log_in_db('integrity', 'Schedule Non numeric at block %s of %s %s'%(blk, schType, entity))
+                    create_log_in_db('non_numeric_schedule', 'Schedule Non numeric at block %s of %s %s'%(blk, schType, entity))
                     continue            
                 tuples.append(dict(sch_type=schType, entity=entity, blk=blk, val = val))        
             
@@ -243,7 +243,7 @@ def push_scada_to_db(wb):
                 # make val zero if non numeric and log
                 if((type(val) != float and type(val) != int)):
                     val = 0
-                    create_log_in_db('integrity', 'SCADA Non numeric at minute %s of %s %s'%(min_num, valType, entity))
+                    create_log_in_db('non_numeric_scada', 'SCADA Non numeric at minute %s of %s %s'%(min_num, valType, entity))
                     continue            
                 tuples.append(dict(val_type=valType, entity=entity, min_num=min_num, val = val))        
             
@@ -297,7 +297,7 @@ def push_hourly_to_db(wb):
                 # make val zero if non numeric and log
                 if((type(val) != float and type(val) != int)):
                     val = 0
-                    create_log_in_db('integrity', 'Hourly Non numeric at hour %s of %s %s'%(hour_num, valType, entity))
+                    create_log_in_db('non_numeric_hourly', 'Hourly Non numeric at hour %s of %s %s'%(hour_num, valType, entity))
                     continue            
                 tuples.append(dict(val_type=valType, entity=entity, hour_num=hour_num, val = val))        
             
