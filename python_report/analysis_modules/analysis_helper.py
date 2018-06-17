@@ -111,4 +111,40 @@ def analyse_violations_db():
         print(e)
     finally:
         conn.close()
-    
+
+def get_last_n_days_deviations(fetch_date, num_days):
+    try:
+        fetch_date_str = fetch_date.strftime('%Y-%m-%d')
+        conn = getConn()
+        cur = conn.cursor()
+        # create sql statement that gets all the limits info
+        average_info_sql = '''select main_vals.val_key, main_vals.entity, main_vals.val_time, main_vals.val, avg(cast(prev_data.val as real)) as prev_avg from
+        (
+            select val_time, val_key, entity, val from key_vals_date where val_time = '%s'
+        ) main_vals 
+        inner join 
+        key_vals_date prev_data using (val_key, entity)
+        where prev_data.val ~ '^[+-]?([0-9]*[.])?[0-9]+$' and prev_data.val_time >= (TIMESTAMP '%s' - INTERVAL '%s DAYS') and prev_data.val_time < '%s'
+        group by main_vals.val_key, main_vals.entity, main_vals.val_time, main_vals.val
+        '''%(fetch_date_str, fetch_date_str, num_days, fetch_date_str)
+        cur.execute(average_info_sql)
+        rows = cur.fetchall()
+        conn.commit()
+        cur.close()
+        conn.close()
+        columns = [x[0] for x in cur.description]
+        averagesDF = pd.DataFrame(data=rows, columns=columns)
+        # clear memory
+        rows = None
+        if(averagesDF.shape[0] > 0):    
+            averagesDF['val'] = pd.to_numeric(averagesDF['val'], errors='coerce')
+            averagesDF['deviation'] = averagesDF.apply(lambda row: np.nan if (np.isnan(row['val']) or row['val'] == 0) else ((row['val'] - row['prev_avg'])*100/row['val']) ,axis = 1)
+        return averagesDF
+    except psycopg2.DatabaseError as e:
+        print(e)
+    finally:
+        conn.close()
+        
+# import datetime as dt
+# fetch_date = dt.datetime.now()
+# num_days = 7
