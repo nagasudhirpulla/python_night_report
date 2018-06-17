@@ -7,6 +7,7 @@
 * Install xlwings addin ```xlwings addin install```
 * Create a project using the command ```xlwings quickstart project_name```
 * Add the folder path of pythonw.exe and python.exe in system environment variable named **Path**
+* Check if we have reference to xlwings in ```Open up the Developer console (Alt-F11) Click on Tools -> References and select xlwings```. The Path would be like ``` C:\Users\Nagasudhir\AppData\Roaming\Microsoft\Excel\XLSTART\xlwings.xlam ```
 
 ## Excel settings for enabling python macros
 * In Interpreter input at top left write path for pythonw.exe ```C:\ProgramData\Anaconda2\pythonw.exe```
@@ -21,3 +22,4 @@
 * python get relative path files https://stackoverflow.com/questions/1270951/how-to-refer-to-relative-paths-of-resources-when-working-with-a-code-repository ```https://stackoverflow.com/questions/1270951/how-to-refer-to-relative-paths-of-resources-when-working-with-a-code-repository```. Open files from relative location in pandas https://stackoverflow.com/questions/35384358/how-to-open-my-files-in-data-folder-with-pandas-using-relative-path ```pd.read_csv('../../../data_folder/data.csv')```
 * Recalculate all cells - https://spreadsheeto.com/recalculate-and-refresh-formulas/
 * xlwings importing issue in github - https://github.com/ZoomerAnalytics/xlwings/issues/634
+* Using relative imports in python from parent direcctory https://docs.python.org/2/whatsnew/2.5.html#pep-328-absolute-and-relative-imports
