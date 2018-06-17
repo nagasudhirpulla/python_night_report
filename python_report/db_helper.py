@@ -14,6 +14,7 @@ from db_connector import getConn
 import psycopg2
 import ids_helper
 import math
+import datetime as dt
 try:
     from itertools import izip as zip
 except ImportError: # will be 3.x series
@@ -283,7 +284,6 @@ def push_hourly_to_db(wb):
         valsArr= wb.sheets[sheetName].range('A3').options(expand='table').value
         conn = getConn()
         # cur = conn.cursor()
-        # todo handle non numeric data and log to console db
         tuples = []
         for entityIndex in range(len(entitiesList)):
             entity = entitiesList[entityIndex]
@@ -1099,7 +1099,7 @@ def transformIRScadaDataAndPush():
 
 # transformation step #6
 def transformIRLinesScadaDataAndPush():
-    # stub for interregional_lines find max_export, max_export_hrs, max_import, max_import_hrs, export_mu, import_mu, peak_flow_mw, off_peak_flow_mw
+    # for interregional_lines find max_export, max_export_hrs, max_import, max_import_hrs, export_mu, import_mu, peak_flow_mw, off_peak_flow_mw
     try:
         # get export import mu values from ire manual data of db
         IRElineImpDict, IRElineExpDict = fetchDBIRElinesExportImportMUDict()
@@ -1335,6 +1335,51 @@ def push_report_vals_to_db(wb, sheet_name):
             tuples_write,
             tuples,
             template = """(
+                %(val_key)s,
+                %(entity)s,
+                %(val)s
+            )""",
+            page_size = 1000
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except psycopg2.DatabaseError as e:
+        print(e)
+    finally:
+        conn.close()
+
+def push_date_report_vals_to_db(wb, sheet_name):
+    try:
+        conn = getConn()
+        cur = conn.cursor()
+        # get report date from db config
+        cur.execute("""SELECT val from key_vals where val_key = %s AND entity = %s""", ('date', 'config'))
+        rows = cur.fetchall()
+        val_time = rows[0][0]
+        val_time = dt.datetime.strptime(val_time, '%Y-%m-%d %H:%M:%S')
+        val_time.replace(hour=0, minute=0, second=0, microsecond=0)
+        tuples = []
+        valsArr= wb.sheets[sheet_name].range('A1').options(expand='table').value
+        for valRow in valsArr:
+            [entity, val_key] = valRow[0].split('|')
+            val = "" if valRow[1] == None else valRow[1]
+            tuples.append(dict(val_time=val_time, val_key=val_key, entity=entity, val=val))
+        tuples_write = """
+            insert into key_vals_date (
+                val_time,
+                val_key,
+                entity,
+                val
+            ) values %s on conflict(val_time, val_key, entity) do update set val = EXCLUDED.val
+        """
+        # push tuples to db
+        execute_values (
+            cur,
+            tuples_write,
+            tuples,
+            template = """(
+                %(val_time)s,
                 %(val_key)s,
                 %(entity)s,
                 %(val)s

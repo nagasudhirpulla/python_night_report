@@ -95,6 +95,12 @@ def push_modified_report_data():
     db_helper.push_report_vals_to_db(wb, sheet_name)
 
 @xw.func
+def push_report_data_for_date():
+    wb = xw.Book.caller()
+    sheet_name = 'REPORT_VALS'
+    db_helper.push_date_report_vals_to_db(wb, sheet_name)
+
+@xw.func
 def push_line_details_to_db():
     wb = xw.Book.caller()
     sheet_name = 'LINE_MAPPINGS'
